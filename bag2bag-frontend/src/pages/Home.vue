@@ -6,7 +6,7 @@
         {{ l.text }}
       </a>
     </section>
-
+  
     <!-- 分類按鈕（從 Navbar 移過來） -->
     <section class="quick-cats">
       <button
@@ -50,20 +50,20 @@
         <article v-for =  "p in cards" :key = "p.id" class = "card">
           <div class = "card-inner">
             <button class = "fav" :aria-label="p.liked ? 'unlike' : 'like'" @click="toggleFav(p)">
-          {{ p.liked ? '❤️' : '🤍' }}
-          </button>
-          <div class = "thumb">
-            <img :src="p.img" :alt="p.name"/>
-          </div>
-          <div class = "price">{{ p.price }}</div>
-          <div class = "name">{{ p.name }}</div>
+              {{ p.liked ? '❤️' : '🤍' }}
+            </button>
+            <div class = "thumb">
+              <img :src="p.img" :alt="p.name"/>
+            </div>
+            <div class = "price">{{ p.price }}</div>
+            <div class = "name">{{ p.name }}</div>
           </div>
         </article>
       </div>
     </section>
   </main>
 
-    <!-- 底部半圆形装饰图案 -->
+  <!-- 底部半圆形装饰图案 -->
   <div class = "bottom-decor">
     <div class = "semi-circle"></div>
   </div>
