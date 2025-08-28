@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bag2bag.st.mapper.UserMapper">
+
+    <!-- 將原本的屬性映射到 users 表的實際欄位 -->
+    <!-- accountNumber -> upi, userPassword -> password_hash, nickname -> username, signInTime -> created_at -->
+    <resultMap id="BaseResultMap" type="com.bag2bag.st.entity.User">
+        <id     column="id"            jdbcType="BIGINT"     property="id"/>
+        <result column="upi"           jdbcType="VARCHAR"    property="accountNumber"/>
+        <result column="password_hash" jdbcType="VARCHAR"    property="userPassword"/>
+        <result column="username"      jdbcType="VARCHAR"    property="nickname"/>
+        <result column="created_at"    jdbcType="TIMESTAMP"  property="signInTime"/>
+        <!-- 目前表沒有 avatar / user_status 欄位，就不做映射 -->
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, upi, username, created_at
+    </sql>
+
+    <!-- 登入：原本 where account_number & user_password -> 改為 upi & password_hash -->
+    <select id="userLogin" resultMap="BaseResultMap">
+        select id, upi, username, created_at
+        from users
+        where upi = #{accountNumber} and password_hash = #{userPassword}
+    </select>
+
+    <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/>
+        from users
+        where id = #{id,jdbcType=BIGINT}
+    </select>
+
+    <!-- 下列兩個原本依賴 user_status；目前表沒有該欄位，先做「等價安全處理」：
+         - countNormalUser: 回傳全部數量
+         - countBanUser:    無禁用欄位，固定 0 -->
+    <select id="countNormalUser" resultType="int">
+        select count(*) from users
+    </select>
+
+    <select id="countBanUser" resultType="int">
+        select 0
+    </select>
+
+    <select id="getUserList" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/>
+        from users
+    </select>
+
+    <!-- 原本分正常/封禁清單，現表無 user_status；改為一般分頁查詢 -->
+    <select id="getNormalUser" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/>
+        from users
+        order by id desc
+        limit #{begin}, #{nums}
+    </select>
+
+    <select id="getBanUser" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"/>
+        from users
+        where 1=0
+    </select>
+
+    <select id="findUserByList" resultMap="BaseResultMap">
+        select id, username, created_at
+        from users
+        where id in
+        <foreach collection="idList" index="index" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+        delete from users
+        where id = #{id,jdbcType=BIGINT}
+    </delete>
+
+    <!-- 新增：對應 users 表實際欄位（email 你前端未傳就不強制） -->
+    <insert id="insert" keyColumn="id" keyProperty="id"
+            parameterType="com.bag2bag.st.entity.User" useGeneratedKeys="true">
+        insert into users (upi, password_hash, username, created_at)
+        values (#{accountNumber,jdbcType=VARCHAR},
+                #{userPassword,jdbcType=VARCHAR},
+                #{nickname,jdbcType=VARCHAR},
+                #{signInTime,jdbcType=TIMESTAMP})
+    </insert>
+
+    <!-- 可選字段新增（沿用你原 insertSelective 的行為；欄位名改為 users 的實際欄位） -->
+    <insert id="insertSelective" keyColumn="id" keyProperty="id"
+            parameterType="com.bag2bag.st.entity.User" useGeneratedKeys="true">
+        insert into users
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="accountNumber != null"> upi, </if>
+            <if test="userPassword != null">  password_hash, </if>
+            <if test="nickname != null">      username, </if>
+            <if test="signInTime != null">    created_at, </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="accountNumber != null"> #{accountNumber,jdbcType=VARCHAR}, </if>
+            <if test="userPassword != null">  #{userPassword,jdbcType=VARCHAR}, </if>
+            <if test="nickname != null">      #{nickname,jdbcType=VARCHAR}, </if>
+            <if test="signInTime != null">    #{signInTime,jdbcType=TIMESTAMP}, </if>
+        </trim>
+    </insert>
+
+    <!-- 更新：對應 users 表實際欄位 -->
+    <update id="updateByPrimaryKeySelective" parameterType="com.bag2bag.st.entity.User">
+        update users
+        <set>
+            <if test="accountNumber != null"> upi = #{accountNumber,jdbcType=VARCHAR}, </if>
+            <if test="userPassword != null">  password_hash = #{userPassword,jdbcType=VARCHAR}, </if>
+            <if test="nickname != null">      username = #{nickname,jdbcType=VARCHAR}, </if>
+            <if test="signInTime != null">    created_at = #{signInTime,jdbcType=TIMESTAMP}, </if>
+        </set>
+        where id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <update id="updateByPrimaryKey" parameterType="com.bag2bag.st.entity.User">
+        update users
+        set upi = #{accountNumber,jdbcType=VARCHAR},
+            password_hash = #{userPassword,jdbcType=VARCHAR},
+            username = #{nickname,jdbcType=VARCHAR},
+            created_at = #{signInTime,jdbcType=TIMESTAMP}
+        where id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <update id="updatePassword">
+        update users
+        set password_hash = #{newPassword,jdbcType=VARCHAR}
+        where id = #{id,jdbcType=BIGINT} and password_hash = #{oldPassword,jdbcType=VARCHAR}
+    </update>
+
+</mapper>

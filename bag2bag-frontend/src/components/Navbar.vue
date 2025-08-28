@@ -66,10 +66,6 @@
             <span>User Profile</span>
           </el-menu-item>
 
-          <el-menu-item index="/my-backpack">
-            <span>My Backpack</span>
-          </el-menu-item>
-
           <!-- 带徽章的菜单项：显示收藏数量 -->
           <el-menu-item index="/my-favorites">
             <span>My Favorites</span>

@@ -6,7 +6,7 @@
         {{ l.text }}
       </a>
     </section>
-  
+
     <!-- 分類按鈕（從 Navbar 移過來） -->
     <section class="quick-cats">
       <button
@@ -122,6 +122,7 @@ function loadMore() {
   page.value += 1
   fetchCards(true)
 }
+
 
 /** 類別（沿用你原本的 cats） */
 const cats = [
