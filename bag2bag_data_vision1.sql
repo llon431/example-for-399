@@ -1,223 +1,270 @@
-/*
- Navicat Premium Data Transfer
+/* ==========================================================
+   BAG2BAG — clean, consistent schema with seed data
+   Charset: utf8mb4 / Collation: utf8mb4_general_ci
+   MySQL 8.0+
+   ========================================================== */
 
- Source Server         : local
- Source Server Type    : MySQL
- Source Server Version : 80029
- Source Host           : localhost:3306
- Source Schema         : DB_School_trade
-
- Target Server Type    : MySQL
- Target Server Version : 80029
- File Encoding         : 65001
-
- Date: 06/01/2024 08:39:37
-*/
+CREATE DATABASE IF NOT EXISTS bag2bag
+  DEFAULT CHARACTER SET utf8mb4
+  COLLATE utf8mb4_general_ci;
+USE bag2bag;
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
--- ----------------------------
--- Table structure for sh_address
--- ----------------------------
-DROP TABLE IF EXISTS `sh_address`;
-CREATE TABLE `sh_address` (
-                              `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-                              `consignee_name` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '收货人姓名',
-                              `consignee_phone` varchar(16) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '收货人手机号',
-                              `province_name` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '省',
-                              `city_name` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '市',
-                              `region_name` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '区',
-                              `detail_address` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '详细地址',
-                              `default_flag` tinyint NOT NULL COMMENT '是否默认地址',
-                              `user_id` bigint NOT NULL COMMENT '用户主键id',
-                              PRIMARY KEY (`id`) USING BTREE,
-                              KEY `user_id_index` (`user_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb3 ROW_FORMAT=COMPACT;
+/* -----------------------------
+   Drop (safe order not required
+   because FK checks are off)
+   ----------------------------- */
+DROP TABLE IF EXISTS sh_favorite;
+DROP TABLE IF EXISTS sh_message;
+DROP TABLE IF EXISTS sh_order;
+DROP TABLE IF EXISTS sh_idle_item;
+DROP TABLE IF EXISTS sh_user;
+DROP TABLE IF EXISTS sh_admin;
 
--- ----------------------------
--- Records of sh_address
--- ----------------------------
-BEGIN;
-INSERT INTO `sh_address` VALUES (30, '陈xx', '17777777777', '天津市', '市辖区', '和平区', '浙江省杭州市余杭区xx街道xx小区', 1, 11);
-INSERT INTO `sh_address` VALUES (31, '陈xx', '18888888888', '北京市', '市辖区', '西城区', '北京xx路xx小区', 1, 12);
-COMMIT;
+DROP TABLE IF EXISTS idle_item_sub_label;
+DROP TABLE IF EXISTS idle_item_label;
+DROP TABLE IF EXISTS idle_item_new;
+DROP TABLE IF EXISTS idle_item_trade;
+DROP TABLE IF EXISTS idle_item_status;
 
--- ----------------------------
--- Table structure for sh_admin
--- ----------------------------
-DROP TABLE IF EXISTS `sh_admin`;
-CREATE TABLE `sh_admin` (
-                            `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-                            `account_number` varchar(16) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '管理员账号',
-                            `admin_password` varchar(16) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '密码',
-                            `admin_name` varchar(8) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '管理员名字',
-                            PRIMARY KEY (`id`) USING BTREE,
-                            UNIQUE KEY `account_number` (`account_number`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb3 ROW_FORMAT=COMPACT;
+/* =============================
+   Dictionary tables (seeded)
+   ============================= */
 
--- ----------------------------
--- Records of sh_admin
--- ----------------------------
-BEGIN;
-INSERT INTO `sh_admin` VALUES (1, '11', '123123', '超级管理员');
-INSERT INTO `sh_admin` VALUES (13, '1866666666', '123456', 'admin');
-COMMIT;
+-- 狀態字典（0=删除,1=已发布,2=已下架）
+CREATE TABLE idle_item_status (
+                                  id        TINYINT      NOT NULL PRIMARY KEY,
+                                  code      VARCHAR(32)  NOT NULL UNIQUE,   -- 'deleted','published','off_shelf'
+                                  label     VARCHAR(32)  NOT NULL,          -- 顯示文字
+                                  is_active TINYINT(1)   NOT NULL DEFAULT 1,
+                                  CHECK (is_active IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ----------------------------
--- Table structure for sh_favorite
--- ----------------------------
-DROP TABLE IF EXISTS `sh_favorite`;
-CREATE TABLE `sh_favorite` (
-                               `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键id',
-                               `create_time` datetime NOT NULL COMMENT '加入收藏的时间',
-                               `user_id` bigint NOT NULL COMMENT '用户主键id',
-                               `idle_id` bigint NOT NULL COMMENT '闲置物主键id',
-                               PRIMARY KEY (`id`) USING BTREE,
-                               UNIQUE KEY `user_id` (`user_id`,`idle_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=49 DEFAULT CHARSET=utf8mb3 ROW_FORMAT=COMPACT;
+-- 交易方式字典（1=出售,2=交換）
+CREATE TABLE idle_item_trade (
+                                 id        TINYINT      NOT NULL PRIMARY KEY,
+                                 code      VARCHAR(32)  NOT NULL UNIQUE,   -- 'sell','exchange'
+                                 label     VARCHAR(32)  NOT NULL,
+                                 is_active TINYINT(1)   NOT NULL DEFAULT 1,
+                                 CHECK (is_active IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ----------------------------
--- Records of sh_favorite
--- ----------------------------
-BEGIN;
-INSERT INTO `sh_favorite` VALUES (48, '2024-01-05 14:29:40', 12, 112);
-COMMIT;
+-- 新舊程度字典（1=全新,2=九成新,3=二手）
+CREATE TABLE idle_item_new (
+                               id        TINYINT      NOT NULL PRIMARY KEY,
+                               code      VARCHAR(32)  NOT NULL UNIQUE,   -- 'brand_new','like_new','used'
+                               label     VARCHAR(32)  NOT NULL,
+                               is_active TINYINT(1)   NOT NULL DEFAULT 1,
+                               CHECK (is_active IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ----------------------------
--- Table structure for sh_idle_item
--- ----------------------------
-DROP TABLE IF EXISTS `sh_idle_item`;
-CREATE TABLE `sh_idle_item` (
-                                `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-                                `idle_name` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '闲置物名称',
-                                `idle_details` varchar(2048) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '详情',
-                                `picture_list` varchar(1024) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '图集',
-                                `idle_price` decimal(10,2) NOT NULL COMMENT '价格',
-                                `idle_place` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '发货地区',
-                                `idle_label` int NOT NULL COMMENT '分类标签',
-                                `release_time` datetime NOT NULL COMMENT '发布时间',
-                                `idle_status` tinyint NOT NULL COMMENT '状态（发布1、下架2、删除0）',
-                                `user_id` bigint NOT NULL COMMENT '用户主键id',
-                                PRIMARY KEY (`id`) USING BTREE,
-                                KEY `user_id_index` (`user_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=113 DEFAULT CHARSET=utf8mb3 ROW_FORMAT=COMPACT;
+-- 類別字典（與主表 idle_label=INT 對齊）
+CREATE TABLE idle_item_label (
+                                 id        INT          NOT NULL PRIMARY KEY,
+                                 code      VARCHAR(32)  NOT NULL UNIQUE,   -- 'univ','tech','clothes','sports','living','other'
+                                 label     VARCHAR(64)  NOT NULL,
+                                 sort_no   INT          NOT NULL DEFAULT 0,
+                                 is_active TINYINT(1)   NOT NULL DEFAULT 1,
+                                 CHECK (is_active IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ----------------------------
--- Records of sh_idle_item
--- ----------------------------
-BEGIN;
-INSERT INTO `sh_idle_item` VALUES (105, '手机', '书籍', '[\"http://localhost:8080/image?imageName=file170446441929610041.jpg\",\"http://localhost:8080/image?imageName=file170446442439410052.jpg\"]', 1900.00, '市辖区', 1, '2024-01-05 14:20:26', 1, 11);
-INSERT INTO `sh_idle_item` VALUES (106, '电脑', '电脑', '[\"http://localhost:8080/image?imageName=file17044644744561006个人博客.jpg\"]', 3000.00, '阳泉市', 1, '2024-01-05 14:21:16', 1, 11);
-INSERT INTO `sh_idle_item` VALUES (107, '电视机', '电视机', '[\"http://localhost:8080/image?imageName=file17044645972761007电影.jpg\"]', 5999.00, '长治市', 2, '2024-01-05 14:23:19', 1, 11);
-INSERT INTO `sh_idle_item` VALUES (108, '空调', '空调', '[\"http://localhost:8080/image?imageName=file17044646299941008停车场.jpg\"]', 1000.00, '景德镇市', 2, '2024-01-05 14:23:51', 1, 11);
-INSERT INTO `sh_idle_item` VALUES (109, '历史书', '历史书', '[\"http://localhost:8080/image?imageName=file17044646674121009音乐.jpg\"]', 20.00, '乌海市', 4, '2024-01-05 14:24:33', 1, 11);
-INSERT INTO `sh_idle_item` VALUES (110, '帐篷', '帐篷', '[\"http://localhost:8080/image?imageName=file17044647092251010社团.jpg\"]', 100.00, '秦皇岛市', 3, '2024-01-05 14:25:22', 1, 11);
-INSERT INTO `sh_idle_item` VALUES (111, '自行车', '自行车', '[\"http://localhost:8080/image?imageName=file17044647567061011考试.jpg\"]', 599.00, '市辖区', 5, '2024-01-05 14:26:00', 2, 11);
-INSERT INTO `sh_idle_item` VALUES (112, '衣服', '衣服', '[\"http://localhost:8080/image?imageName=file17044647909181012图书馆.png\"]', 199.00, '长治市', 5, '2024-01-05 14:26:38', 1, 11);
-COMMIT;
+-- 子類別（如需要）
+CREATE TABLE idle_item_sub_label (
+                                     id        INT          NOT NULL PRIMARY KEY,
+                                     parent_id INT          NOT NULL,          -- 指向 idle_item_label.id
+                                     code      VARCHAR(32)  NOT NULL UNIQUE,
+                                     label     VARCHAR(64)  NOT NULL,
+                                     sort_no   INT          NOT NULL DEFAULT 0,
+                                     is_active TINYINT(1)   NOT NULL DEFAULT 1,
+                                     CHECK (is_active IN (0,1)),
+                                     CONSTRAINT fk_sublabel_parent
+                                         FOREIGN KEY (parent_id) REFERENCES idle_item_label(id)
+                                             ON UPDATE RESTRICT ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ----------------------------
--- Table structure for sh_message
--- ----------------------------
-DROP TABLE IF EXISTS `sh_message`;
-CREATE TABLE `sh_message` (
-                              `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-                              `user_id` bigint NOT NULL COMMENT '用户主键id',
-                              `idle_id` bigint NOT NULL COMMENT '闲置主键id',
-                              `content` varchar(256) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '留言内容',
-                              `create_time` datetime NOT NULL COMMENT '留言时间',
-                              `to_user` bigint NOT NULL COMMENT '所回复的用户',
-                              `to_message` bigint DEFAULT NULL COMMENT '所回复的留言',
-                              PRIMARY KEY (`id`) USING BTREE,
-                              KEY `user_id_index` (`user_id`) USING BTREE,
-                              KEY `idle_id_index` (`idle_id`) USING BTREE,
-                              KEY `to_user_index` (`to_user`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=53 DEFAULT CHARSET=utf8mb3 ROW_FORMAT=COMPACT;
+-- 初始化字典資料
+INSERT INTO idle_item_status (id, code, label) VALUES
+                                                   (0,'deleted','刪除'),
+                                                   (1,'published','已發布'),
+                                                   (2,'off_shelf','已下架');
 
--- ----------------------------
--- Records of sh_message
--- ----------------------------
-BEGIN;
-INSERT INTO `sh_message` VALUES (48, 11, 112, '多少钱', '2024-01-05 14:26:48', 11, NULL);
-INSERT INTO `sh_message` VALUES (49, 11, 111, '这个可以便宜点么？', '2024-01-05 14:27:03', 11, NULL);
-INSERT INTO `sh_message` VALUES (50, 11, 111, '可以', '2024-01-05 14:27:19', 11, 49);
-INSERT INTO `sh_message` VALUES (51, 11, 107, '东西怎么买啊？人在哪？', '2024-01-06 00:32:51', 11, NULL);
-INSERT INTO `sh_message` VALUES (52, 11, 105, '东西怎么买？', '2024-01-06 00:33:54', 11, NULL);
-COMMIT;
+INSERT INTO idle_item_trade (id, code, label) VALUES
+                                                  (1,'sell','出售'),
+                                                  (2,'exchange','交換');
 
--- ----------------------------
--- Table structure for sh_order
--- ----------------------------
-DROP TABLE IF EXISTS `sh_order`;
-CREATE TABLE `sh_order` (
-                            `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-                            `order_number` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '订单编号',
-                            `user_id` bigint NOT NULL COMMENT '用户主键id',
-                            `idle_id` bigint NOT NULL COMMENT '闲置物品主键id',
-                            `order_price` decimal(10,2) NOT NULL COMMENT '订单总价',
-                            `payment_status` tinyint NOT NULL COMMENT '支付状态',
-                            `payment_way` varchar(16) CHARACTER SET utf8mb3 COLLATE utf8_general_ci DEFAULT NULL COMMENT '支付方式',
-                            `create_time` datetime NOT NULL COMMENT '创建时间',
-                            `payment_time` datetime DEFAULT NULL COMMENT '支付时间',
-                            `order_status` tinyint NOT NULL COMMENT '订单状态',
-                            `is_deleted` tinyint DEFAULT NULL COMMENT '是否删除',
-                            PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=87 DEFAULT CHARSET=utf8mb3 ROW_FORMAT=COMPACT;
+INSERT INTO idle_item_new (id, code, label) VALUES
+                                                (1,'brand_new','全新'),
+                                                (2,'like_new','九成新'),
+                                                (3,'used','二手');
 
--- ----------------------------
--- Records of sh_order
--- ----------------------------
-BEGIN;
-INSERT INTO `sh_order` VALUES (85, '170446501212310003', 12, 106, 3000.00, 0, NULL, '2024-01-05 14:30:12', NULL, 4, NULL);
-INSERT INTO `sh_order` VALUES (86, '170446506640210004', 12, 111, 599.00, 1, '支付宝', '2024-01-05 14:31:06', '2024-01-05 14:31:11', 3, NULL);
-COMMIT;
+INSERT INTO idle_item_label (id, code, label, sort_no, is_active) VALUES
+                                                                      (1,'univ','University',10,1),
+                                                                      (2,'tech','Tech',20,1),
+                                                                      (3,'clothes','Clothes',30,1),
+                                                                      (4,'sports','Sports',40,1),
+                                                                      (5,'living','Living',50,1),
+                                                                      (6,'other','Other',60,1);
 
--- ----------------------------
--- Table structure for sh_order_address
--- ----------------------------
-DROP TABLE IF EXISTS `sh_order_address`;
-CREATE TABLE `sh_order_address` (
-                                    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增id',
-                                    `order_id` bigint NOT NULL COMMENT '订单id',
-                                    `consignee_name` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '收货人',
-                                    `consignee_phone` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '电话',
-                                    `detail_address` varchar(128) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '收货地址',
-                                    PRIMARY KEY (`id`) USING BTREE,
-                                    UNIQUE KEY `orderId` (`order_id`) USING BTREE,
-                                    KEY `order_id_index` (`order_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb3 ROW_FORMAT=COMPACT;
+/* =============================
+   Business tables
+   ============================= */
 
--- ----------------------------
--- Records of sh_order_address
--- ----------------------------
-BEGIN;
-INSERT INTO `sh_order_address` VALUES (21, 86, '陈xx', '18888888888', '北京市市辖区西城区北京xx路xx小区');
-INSERT INTO `sh_order_address` VALUES (22, 85, '陈xx', '18888888888', '北京市市辖区西城区北京xx路xx小区');
-COMMIT;
+-- 管理員
+CREATE TABLE sh_admin (
+                          id              BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '自增主键',
+                          account_number  VARCHAR(32)  NOT NULL UNIQUE COMMENT '管理员账号',
+                          admin_password  VARCHAR(128) NOT NULL COMMENT '密码(哈希或明文佔位)',
+                          admin_name      VARCHAR(32)  NOT NULL COMMENT '管理员名字'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ----------------------------
--- Table structure for sh_user
--- ----------------------------
-DROP TABLE IF EXISTS `sh_user`;
-CREATE TABLE `sh_user` (
-                           `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-                           `account_number` varchar(16) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '账号（手机号）',
-                           `user_password` varchar(16) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '登录密码',
-                           `nickname` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '昵称',
-                           `avatar` varchar(256) CHARACTER SET utf8mb3 COLLATE utf8_general_ci NOT NULL COMMENT '头像',
-                           `sign_in_time` datetime NOT NULL COMMENT '注册时间',
-                           `user_status` tinyint DEFAULT NULL COMMENT '状态（1代表封禁）',
-                           PRIMARY KEY (`id`) USING BTREE,
-                           UNIQUE KEY `account_number` (`account_number`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb3 ROW_FORMAT=COMPACT;
+-- 使用者
+CREATE TABLE sh_user (
+                         id              BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '自增主键',
+                         account_number  VARCHAR(32)  NOT NULL UNIQUE COMMENT '账号（手机号）',
+                         Email_number    VARCHAR(128) NOT NULL COMMENT '邮箱',
+                         UPI             VARCHAR(32)  NOT NULL COMMENT '如：yyan799',
+                         user_password   VARCHAR(128) NOT NULL COMMENT '登录密码(哈希或明文佔位)',
+                         nickname        VARCHAR(64)  NOT NULL COMMENT '昵称',
+                         avatar          VARCHAR(512) NOT NULL COMMENT '头像URL',
+                         sign_in_time    DATETIME     NOT NULL COMMENT '注册时间',
+                         user_status     TINYINT      NOT NULL DEFAULT 0 COMMENT '状态（1代表封禁）',
+                         major           VARCHAR(256)          DEFAULT NULL COMMENT '科系',
+                         National        VARCHAR(256)          DEFAULT NULL COMMENT '國家',
+                         degree          VARCHAR(256)          DEFAULT NULL COMMENT '學位',
+                         rating          VARCHAR(256)          DEFAULT NULL COMMENT '評分'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ----------------------------
--- Records of sh_user
--- ----------------------------
-BEGIN;
-INSERT INTO `sh_user` VALUES (11, '18777777777', '123456', 'user', 'http://localhost:8080/image?imageName=file170446387201110031.jpg', '2024-01-05 13:20:06', NULL);
-INSERT INTO `sh_user` VALUES (12, '18888888888', '123456', 'user2', 'http://localhost:8080/image?imageName=file170446508583010132.jpg', '2024-01-05 14:29:24', NULL);
-COMMIT;
+-- 閒置物
+CREATE TABLE sh_idle_item (
+                              id                   BIGINT        NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '自增主键',
+                              idle_name            VARCHAR(64)   NOT NULL COMMENT '闲置物名称',
+                              idle_details         VARCHAR(2048) NOT NULL COMMENT '详情',
+                              picture_list         VARCHAR(1024) NOT NULL COMMENT '图集(JSON数组)',
+                              idle_price           DECIMAL(10,2) NOT NULL COMMENT '价格',
+                              idle_original_price  DECIMAL(10,2) NOT NULL COMMENT '原始价格',
+                              idle_place           VARCHAR(32)   NOT NULL COMMENT '发货地区',
+                              idle_label           INT           NOT NULL COMMENT '分類(字典 idle_item_label.id)',
+                              release_time         DATETIME      NOT NULL COMMENT '发布时间',
+                              idle_status          TINYINT       NOT NULL COMMENT '狀態: 0=刪除,1=已發布,2=已下架',
+                              idle_trade           TINYINT       NOT NULL COMMENT '交易: 1=出售,2=交換',
+                              user_id              BIGINT        NOT NULL COMMENT '用户主键id',
+                              idle_new             TINYINT       NOT NULL COMMENT '新舊: 1=全新,2=九成新,3=二手',
+                              KEY idx_user_id     (user_id),
+                              KEY idx_idle_status (idle_status),
+                              KEY idx_idle_trade  (idle_trade),
+                              KEY idx_idle_new    (idle_new),
+                              KEY idx_idle_label  (idle_label),
+                              CONSTRAINT fk_idle_status FOREIGN KEY (idle_status) REFERENCES idle_item_status(id)
+                                  ON UPDATE RESTRICT ON DELETE RESTRICT,
+                              CONSTRAINT fk_idle_trade  FOREIGN KEY (idle_trade)  REFERENCES idle_item_trade(id)
+                                  ON UPDATE RESTRICT ON DELETE RESTRICT,
+                              CONSTRAINT fk_idle_new    FOREIGN KEY (idle_new)    REFERENCES idle_item_new(id)
+                                  ON UPDATE RESTRICT ON DELETE RESTRICT,
+                              CONSTRAINT fk_idle_label  FOREIGN KEY (idle_label)  REFERENCES idle_item_label(id)
+                                  ON UPDATE RESTRICT ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 收藏
+CREATE TABLE sh_favorite (
+                             id           BIGINT   NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '自增主键id',
+                             create_time  DATETIME NOT NULL COMMENT '加入收藏的时间',
+                             user_id      BIGINT   NOT NULL COMMENT '用户主键id',
+                             idle_id      BIGINT   NOT NULL COMMENT '闲置物主键id',
+                             UNIQUE KEY user_idle_unique (user_id, idle_id),
+                             CONSTRAINT fk_fav_user FOREIGN KEY (user_id) REFERENCES sh_user(id)
+                                 ON UPDATE CASCADE ON DELETE CASCADE,
+                             CONSTRAINT fk_fav_idle FOREIGN KEY (idle_id) REFERENCES sh_idle_item(id)
+                                 ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 留言
+CREATE TABLE sh_message (
+                            id           BIGINT      NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '自增主键',
+                            user_id      BIGINT      NOT NULL COMMENT '用户主键id',
+                            idle_id      BIGINT      NOT NULL COMMENT '闲置主键id',
+                            content      VARCHAR(256) NOT NULL COMMENT '留言内容',
+                            create_time  DATETIME    NOT NULL COMMENT '留言时间',
+                            to_user      BIGINT      NOT NULL COMMENT '所回复的用户',
+                            to_message   BIGINT               DEFAULT NULL COMMENT '所回复的留言',
+                            KEY idx_msg_user (user_id),
+                            KEY idx_msg_idle (idle_id),
+                            KEY idx_msg_to_user (to_user),
+                            CONSTRAINT fk_msg_user FOREIGN KEY (user_id) REFERENCES sh_user(id)
+                                ON UPDATE CASCADE ON DELETE CASCADE,
+                            CONSTRAINT fk_msg_idle FOREIGN KEY (idle_id) REFERENCES sh_idle_item(id)
+                                ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 訂單（此處先不對 payment_status/order_status 建字典；可後續加）
+CREATE TABLE sh_order (
+                          id             BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '自增主键',
+                          order_number   VARCHAR(32)  NOT NULL COMMENT '订单编号',
+                          user_id        BIGINT       NOT NULL COMMENT '用户主键id',
+                          idle_id        BIGINT       NOT NULL COMMENT '闲置物品主键id',
+                          order_price    DECIMAL(10,2) NOT NULL COMMENT '订单总价',
+                          payment_status TINYINT      NOT NULL COMMENT '支付状态(0=未支付,1=已支付等)',
+                          payment_way    VARCHAR(16)           DEFAULT NULL COMMENT '支付方式',
+                          create_time    DATETIME     NOT NULL COMMENT '创建时间',
+                          payment_time   DATETIME              DEFAULT NULL COMMENT '支付时间',
+                          order_status   TINYINT      NOT NULL COMMENT '订单状态(3=完成,4=取消等)',
+                          is_deleted     TINYINT      NOT NULL DEFAULT 0 COMMENT '是否删除',
+                          KEY idx_order_user (user_id),
+                          KEY idx_order_idle (idle_id),
+                          CONSTRAINT fk_order_user FOREIGN KEY (user_id) REFERENCES sh_user(id)
+                              ON UPDATE CASCADE ON DELETE CASCADE,
+                          CONSTRAINT fk_order_idle FOREIGN KEY (idle_id) REFERENCES sh_idle_item(id)
+                              ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/* =============================
+   Seed data
+   ============================= */
+
+-- 管理員
+INSERT INTO sh_admin (id, account_number, admin_password, admin_name) VALUES
+                                                                          (1,  '11',         '123123', '超级管理员'),
+                                                                          (13, '1866666666', '123456', 'admin');
+
+-- 使用者（補 id=11,12 以符合後續示例資料的外鍵）
+INSERT INTO sh_user
+(id, account_number, Email_number, UPI, user_password, nickname, avatar, sign_in_time, user_status, major, National, degree, rating)
+VALUES
+    (11, '13800000011', 'user11@example.com', 'yyan711', 'pass11', 'user11',
+     'https://example.com/a11.png', '2024-01-01 10:00:00', 0, 'CS', 'NZ', 'BSc', NULL),
+    (12, '13800000012', 'user12@example.com', 'yyan799', 'pass12', 'user12',
+     'https://example.com/a12.png', '2024-01-02 11:00:00', 0, 'CS', 'NZ', 'BSc', NULL);
+
+-- 閒置物（補示例 id，以便後續收藏/留言/訂單外鍵）
+INSERT INTO sh_idle_item
+(id, idle_name, idle_details, picture_list, idle_price, idle_original_price, idle_place,
+ idle_label, release_time, idle_status, idle_trade, user_id, idle_new)
+VALUES
+    (105, 'Sample Item 105', 'details', '[]', 100.00, 150.00, 'Auckland', 2, '2024-01-03 09:00:00', 1, 1, 11, 3),
+    (106, 'Sample Item 106', 'details', '[]', 3000.00, 3500.00, 'Auckland', 2, '2024-01-03 10:00:00', 1, 1, 12, 2),
+    (107, 'Sample Item 107', 'details', '[]',  50.00,   80.00, 'Auckland', 1, '2024-01-04 12:00:00', 1, 2, 11, 3),
+    (111, 'Sample Item 111', 'details', '[]', 599.00,  699.00, 'Auckland', 2, '2024-01-05 12:30:00', 1, 1, 12, 2),
+    (112, 'Sample Item 112', 'details', '[]', 120.00,  200.00, 'Auckland', 5, '2024-01-05 14:20:00', 1, 1, 12, 3);
+
+-- 收藏（來自你原始示例）
+INSERT INTO sh_favorite (id, create_time, user_id, idle_id) VALUES
+    (48, '2024-01-05 14:29:40', 12, 112);
+
+-- 留言（來自你原始示例）
+INSERT INTO sh_message (id, user_id, idle_id, content, create_time, to_user, to_message) VALUES
+                                                                                             (48, 11, 112, '多少钱',            '2024-01-05 14:26:48', 11, NULL),
+                                                                                             (49, 11, 111, '这个可以便宜点么？', '2024-01-05 14:27:03', 11, NULL),
+                                                                                             (50, 11, 111, '可以',              '2024-01-05 14:27:19', 11, 49),
+                                                                                             (51, 11, 107, '东西怎么买啊？人在哪？','2024-01-06 00:32:51', 11, NULL),
+                                                                                             (52, 11, 105, '东西怎么买？',      '2024-01-06 00:33:54', 11, NULL);
+
+-- 訂單（來自你原始示例）
+INSERT INTO sh_order (id, order_number, user_id, idle_id, order_price, payment_status, payment_way, create_time, payment_time, order_status, is_deleted) VALUES
+                                                                                                                                                             (85, '170446501212310003', 12, 106, 3000.00, 0, NULL,       '2024-01-05 14:30:12', NULL,                4, 0),
+                                                                                                                                                             (86, '170446506640210004', 12, 111,  599.00, 1, '支付宝',    '2024-01-05 14:31:06', '2024-01-05 14:31:11', 3, 0);
 
 SET FOREIGN_KEY_CHECKS = 1;
+/* =============================
+   Done.
+   ============================= */
