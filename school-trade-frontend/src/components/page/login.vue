@@ -42,6 +42,7 @@
 
 <script>
 import Logo from '@/assets/logo.png'
+
 export default {
   name: 'login',
   data () {
@@ -59,57 +60,54 @@ export default {
 
       const payload = {
         UPI: (this.form.UPI || '').trim(),
-        userPassword: this.form.password   // 密碼不要 trim 比較安全
+        userPassword: this.form.password     // 密碼不 trim
       };
 
       try {
-        const res = await this.$api.userLogin(payload);
+        const res  = await this.$api.userLogin(payload);
+        // 如果你的攔截器已經把 axios 回傳簡化成 res.data，這樣寫就對；
+        // 若沒有攔截器，可改成：const body = (res && res.data) ? res.data : res;
+        const body = res;
 
-        // 注意：你的 request.js 攔截器已把 axios response 簡化成 response.data
-        const body = res;   // 千萬不要再寫 res.data
-
-        // 兼容兩種格式：
-        // A) { status_code:1, data:{...} }
-        // B) { data:{...} } 或直接 {...user}
-        const success =
-            (body && body.status_code === 1) ||
-            (body && body.data) ||
-            (body && (body.id || body.accountNumber || body.upi));
-
+        // 兼容兩種返回：A) { status_code:1, data:{...} }  B) 直接 {...user}
+        const isOk = (body && body.status_code === 1) || (body && (body.id || body.upi));
         const user = (body && body.data) ? body.data : body;
 
-        if (success) {
-          if (user && user.signInTime && typeof user.signInTime === 'string') {
-            user.signInTime = user.signInTime.substring(0, 10);
-          }
-          this.$globalData.userInfo = user;
-          this.$router.replace({ path: '/index' }); // 登入成功導向首頁
+        if (isOk && user) {
+          // 1) 存入當前使用者（含 avatar, nickname, upi）
+          localStorage.setItem('user', JSON.stringify(user));
+
+          // 2) 通知 AppHeader 立刻重讀（同分頁不會觸發 storage 事件）
+          window.dispatchEvent(new CustomEvent('bag2bag:user-updated'));
+
+          // 3) （可選）舊代碼若有全域保存可保留
+          this.$globalData && (this.$globalData.userInfo = user);
+
+          // 4) 最後再跳回首頁
+          this.$router.replace({ path: '/index' }); // 或 '/'
         } else {
           const msg =
-              (body && body.msg) ? body.msg :
-                  (body && body.message) ? body.message :
-                      (body && typeof body.data === 'string') ? body.data :
-                          'Fail';
+              (body && body.msg) || (body && body.message) ||
+              (body && typeof body.data === 'string' && body.data) || 'Fail';
           this.$message.error(msg);
         }
       } catch (e) {
         console.error(e);
         this.$message.error('Network Fail');
       }
-    }
-  }
-  ,
+    },
 
-
-  goBack () {
-    if (window.history.length > 1) {
-      this.$router.back()
-    } else {
-      this.$router.push('/')   // 沒有歷史時回首頁
+    goBack () {
+      if (window.history.length > 1) {
+        this.$router.back()
+      } else {
+        this.$router.push('/')
+      }
     }
   }
 }
 </script>
+
 
 <style scoped>
 :root { --nav:#0c1240; --line:#1597a8; }

@@ -9,26 +9,27 @@
 
       <!-- Right: actions -->
       <div class="actions">
-        <router-link class="login" to="/sign-in">Login</router-link>
-        <button class="menu-btn" aria-label="Open menu" @click="drawer = true">≡</button>
+        <!-- 未登录 -->
+        <template v-if="user">
+          <el-dropdown trigger="click" @command="onMenu">
+    <span class="avatar-wrap">
+      <el-avatar :src="avatarSrc" size="small">{{ avatarInitial }}</el-avatar>
+    </span>
+            <el-dropdown-menu slot="dropdown">
+              <el-dropdown-item command="profile">Profile</el-dropdown-item>
+              <el-dropdown-item divided @click.native="logout">Logout</el-dropdown-item>
+            </el-dropdown-menu>
+          </el-dropdown>
+        </template>
+        <template v-else>
+          <router-link to="/login" class="login-btn">Login</router-link>
+        </template>
       </div>
     </div>
 
+
+
     <!-- Slide-out menu (Element UI Drawer) -->
-    <el-drawer
-        :visible.sync="drawer"
-        direction="rtl"
-        size="280px"
-        custom-class="nav-drawer"
-        :modal-append-to-body="false"
-    >
-      <nav class="drawer-nav">
-        <router-link to="/" @click.native="drawer = false">Home</router-link>
-        <router-link to="/categories" @click.native="drawer = false">Categories</router-link>
-        <router-link to="/publish" @click.native="drawer = false">Post Item</router-link>
-        <router-link to="/sign-in" @click.native="drawer = false">Login</router-link>
-      </nav>
-    </el-drawer>
   </header>
 </template>
 
@@ -37,7 +38,60 @@ import Logo from '@/assets/logo.png'
 export default {
   name: 'AppHeader',
   data () {
-    return { drawer: false,logo: Logo }
+    return { drawer: false,logo: Logo, user:null }
+  },
+  created() {
+    this.hydrate();
+    if (!this.user) this.fetchMe(); // 可選：用 cookie 拉一次
+
+    // ✅ 同分頁登入後，立刻讓 Header 更新
+    window.addEventListener('bag2bag:user-updated', this.hydrate);
+
+    // ✅ 從 login 頁跳回首頁時也重讀
+    this.$watch('$route', () => this.hydrate());
+  },
+  beforeDestroy() {
+    window.removeEventListener('bag2bag:user-updated', this.hydrate);
+  },
+  methods: {
+    hydrate() {
+      try {
+        const raw = localStorage.getItem('user');
+        this.user = raw ? JSON.parse(raw) : null;
+        // console.log('header hydrate', this.user)  // 想檢查時打開
+      } catch { this.user = null; }
+    },
+    async fetchMe() {
+      try {
+        // 用你現成的 $api；接口路徑按你 Network 截圖用 /user
+        const res = await this.$api.get('/user', { withCredentials: true });
+        const d = res && res.data ? res.data : res;
+        if (d && d.status_code === 1 && d.data) {
+          localStorage.setItem('user', JSON.stringify(d.data));
+          this.user = d.data;
+        }
+      } catch {}
+    },
+    async logout() {
+      try {
+        // 後端清 cookie（若未實作，可先略過這行）
+        await this.$api.post('/logout', null, { withCredentials: true })
+      } catch (e) { /* 靜默即可 */ }
+
+      // 前端清狀態 + 通知 Header 立即更新
+      localStorage.removeItem('user')
+      window.dispatchEvent(new CustomEvent('bag2bag:user-updated'))
+      this.user = null
+
+      this.$router.push('/index')
+    },
+  },
+  computed: {
+    avatarSrc() { return this.user && this.user.avatar ? this.user.avatar : '' },
+    avatarInitial() {
+      const name = this.user ? (this.user.nickname || this.user.upi || 'U') : 'U';
+      return String(name).charAt(0).toUpperCase();
+    }
   }
 }
 </script>
