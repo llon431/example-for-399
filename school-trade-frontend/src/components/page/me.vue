@@ -1,728 +1,1412 @@
 <template>
-    <div>
-        <app-head :nickname-value="userInfo.nickname"
-                  :avatarValue="userInfo.avatar"></app-head>
-        <app-body>
-            <div v-show="!eidtAddress">
-                <div class="user-info-container">
-                    <div class="user-info-details">
-
-                        <el-upload
-                                action="http://localhost:8080/file/"
-                                :on-success="fileHandleSuccess"
-                                :file-list="imgFileList"
-                                accept="image/*"
-                        >
-                            <el-image
-                                    style="width: 120px; height: 120px;border-radius: 10px;"
-                                    :src="userInfo.avatar"
-                                    fit="contain"></el-image>
-                        </el-upload>
-                        <div class="user-info-details-text">
-                            <div class="user-info-details-text-nickname">{{userInfo.nickname}}</div>
-                            <div class="user-info-details-text-time">{{userInfo.signInTime}} 加入平台</div>
-                            <div class="user-info-details-text-edit">
-                                <el-button type="primary" plain @click="userInfoDialogVisible = true">编辑个人信息</el-button>
-                            </div>
-                            <el-dialog
-                                    @close="finishEdit"
-                                    title="编辑个人信息"
-                                    :visible.sync="userInfoDialogVisible"
-                                    width="400px">
-                                <div class="edit-tip">昵称</div>
-                                <el-input
-                                        v-model="userInfo.nickname"
-                                        :disabled="notUserNicknameEdit"
-                                        @change="saveUserNickname">
-                                    <el-button slot="append" type="warning" icon="el-icon-edit"
-                                               @click="notUserNicknameEdit = false">编辑
-                                    </el-button>
-                                </el-input>
-
-                                <div v-if="userPasswordEdit">
-                                    <div class="edit-tip">原密码</div>
-                                    <el-input v-model="userPassword1" show-password></el-input>
-                                    <div class="edit-tip">新密码</div>
-                                    <el-input v-model="userPassword2" show-password></el-input>
-                                    <div class="edit-tip">确认新密码</div>
-                                    <el-input v-model="userPassword3" show-password></el-input>
-                                    <div class="edit-tip"></div>
-                                    <el-button @click="savePassword" plain>确认修改</el-button>
-                                </div>
-                                <div v-else>
-                                    <div class="edit-tip">密码</div>
-                                    <el-input
-                                            value="123456"
-                                            :disabled="true"
-                                            show-password>
-                                        <el-button slot="append" type="warning" icon="el-icon-edit"
-                                                   @click="userPasswordEdit = true">编辑
-                                        </el-button>
-                                    </el-input>
-                                </div>
-                                <span slot="footer" class="dialog-footer">
-                                <el-button @click="userInfoDialogVisible=false">完成</el-button>
-                            </span>
-                            </el-dialog>
-                        </div>
-                    </div>
-                    <div class="user-info-splace">
-                        <el-button type="primary" plain @click="eidtAddress=true">编辑收货地址</el-button>
-                    </div>
-                </div>
-                <div class="idle-container">
-                    <el-tabs v-model="activeName" @tab-click="handleClick">
-                        <el-tab-pane label="我发布的" name="1"></el-tab-pane>
-                        <el-tab-pane label="我下架的" name="2"></el-tab-pane>
-                        <el-tab-pane label="我收藏的" name="3"></el-tab-pane>
-                        <el-tab-pane label="我卖出的" name="4"></el-tab-pane>
-                        <el-tab-pane label="我买到的" name="5"></el-tab-pane>
-                    </el-tabs>
-                    <div class="idle-container-list">
-                        <div v-for="(item,index) in dataList[activeName-1]" class="idle-container-list-item">
-                            <div class="idle-container-list-item-detile" @click="toDetails(activeName,item)">
-                                <el-image
-                                        style="width: 100px; height: 100px;"
-                                        :src="item.imgUrl"
-                                        fit="cover">
-                                    <div slot="error" class="image-slot">
-                                        <i class="el-icon-picture-outline">无图</i>
-                                    </div>
-                                </el-image>
-                                <div class="idle-container-list-item-text">
-                                    <div class="idle-container-list-title">
-                                        {{item.idleName}}
-                                    </div>
-                                    <div class="idle-container-list-idle-details" v-html="item.idleDetails">
-                                        {{item.idleDetails}}
-                                    </div>
-                                    <div class="idle-container-list-idle-time">{{item.timeStr}}</div>
-
-                                    <div class="idle-item-foot">
-                                        <div class="idle-prive">￥{{item.idlePrice}}
-                                            {{(activeName==='4'||activeName==='5')?orderStatus[item.orderStatus]:''}}
-                                        </div>
-                                        <el-button v-if="activeName!=='4'&&activeName!=='5'" type="danger" size="mini" slot="reference"
-                                                   plain @click.stop="handle(activeName,item,index)">{{handleName[activeName-1]}}
-                                        </el-button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+  <div>
+    <app-head :nickname-value="userInfo.nickname"
+              :avatarValue="userInfo.avatar"></app-head>
+    <app-body>
+      <!-- User Information Section - Enhanced Header Style -->
+      <div class="user-profile-section">
+        <div class="user-profile-card">
+          <!-- User Profile Header -->
+          <div class="profile-header">
+            <div class="profile-cover">
+              <div class="cover-gradient"></div>
+              <div class="header-decoration"></div>
             </div>
-            <div v-show="eidtAddress" class="address-container">
-                <el-page-header class="address-container-back" @back="eidtAddress=false"
-                                content="收货地址"></el-page-header>
-                <div class="address-container-add">
-                    <div class="address-container-add-title">新增收货地址</div>
-                    <div class="address-container-add-item">
-                        <el-input placeholder="请输入收货人姓名" v-model="addressInfo.consigneeName" maxlength="10"
-                                  show-word-limit>
-                            <div slot="prepend">收货人姓名</div>
-                        </el-input>
-                    </div>
-                    <div class="address-container-add-item">
-                        <el-input placeholder="请输入收货人手机号" v-model="addressInfo.consigneePhone"
-                                  onkeyup="this.value=this.value.replace(/[^\d.]/g,'');" maxlength="11" show-word-limit>
-                            <div slot="prepend">手机号</div>
-                        </el-input>
-                    </div>
 
-                    <div class="address-container-add-item">
-                        <span class="demonstration">省/市/区</span>
-                        <el-cascader
-                                :options="options"
-                                v-model="selectedOptions"
-                                @change="handleAddressChange"
-                                :separator="' '"
-                        >
-                        </el-cascader>
+            <div class="profile-main">
+              <div class="avatar-section">
+                <el-upload
+                    action="http://localhost:8080/file/"
+                    :on-success="fileHandleSuccess"
+                    :file-list="imgFileList"
+                    accept="image/*"
+                    :show-file-list="false"
+                >
+                  <div class="avatar-wrapper">
+                    <el-image
+                        class="user-avatar"
+                        :src="userInfo.avatar"
+                        fit="cover">
+                      <div slot="error" class="avatar-placeholder">
+                        <i class="el-icon-user-solid"></i>
+                      </div>
+                    </el-image>
+                    <div class="avatar-overlay">
+                      <i class="el-icon-camera"></i>
+                      <span>Change</span>
                     </div>
-                    <div class="address-container-add-item">
-                        <el-input placeholder="请输入详细地址（如道路、门牌号、小区、楼栋号等信息）" v-model="addressInfo.detailAddress"
-                                  maxlength="50" show-word-limit>
-                            <div slot="prepend">详细地址</div>
-                        </el-input>
+                  </div>
+                </el-upload>
+              </div>
+
+              <div class="profile-info">
+                <div class="name-and-rating">
+                  <h1 class="user-nickname">{{userInfo.nickname || 'User name'}}</h1>
+                  <div class="user-rating">
+                    <div class="rating-stars">
+                      <i class="el-icon-star-on" v-for="n in 5" :key="n"></i>
                     </div>
-                    <el-checkbox v-model="addressInfo.defaultFlag">设置为默认地址</el-checkbox>
-                    <el-button style="margin-left: 20px;" @click="saveAddress">保存</el-button>
+                    <span class="rating-text">5.0</span>
+                  </div>
                 </div>
-                <div class="address-container-list">
-                    <div style="color: #409EFF;font-size: 15px;padding-left: 10px;">已有收货地址</div>
-                    <el-table
-                            stripe
-                            :data="addressData"
-                            style="width: 100%">
-                        <el-table-column
-                                prop="consigneeName"
-                                label="收货人姓名"
-                                width="100">
-                        </el-table-column>
-                        <el-table-column
-                                prop="consigneePhone"
-                                label="手机号"
-                                width="120">
-                        </el-table-column>
-                        <el-table-column
-                                prop="detailAddressText"
-                                label="地址"
-                                width="270">
-                        </el-table-column>
-                        <el-table-column label="操作">
-                            <template slot-scope="scope">
-                                <el-button
-                                        size="mini"
-                                        @click="handleEdit(scope.$index, scope.row)">编辑
-                                </el-button>
-                                <el-button
-                                        size="mini"
-                                        type="danger"
-                                        @click="handleDelete(scope.$index, scope.row)">删除
-                                </el-button>
-                            </template>
-                        </el-table-column>
-                        <el-table-column label="是否默认地址" width="110">
-                            <template slot-scope="scope">
-                                <el-button v-if="!scope.row.defaultFlag"
-                                           size="mini"
-                                           @click="handleSetDefault(scope.$index, scope.row)">设为默认
-                                </el-button>
-                                <div v-else style="padding-left: 10px;color: #409EFF;">{{scope.row.defaultAddress}}
-                                </div>
-                            </template>
-                        </el-table-column>
-                    </el-table>
+
+                <div class="user-meta-grid">
+                  <div class="meta-card">
+                    <i class="el-icon-location detail-icon"></i>
+                    <div>
+                      <span class="meta-label">Nation</span>
+                      <span class="meta-value">{{userInfo.national || 'Wait To Upload'}}</span>
+                    </div>
+                  </div>
+
+                  <div class="meta-card">
+                    <i class="el-icon-school detail-icon"></i>
+                    <div>
+                      <span class="meta-label">Major</span>
+                      <span class="meta-value">{{userInfo.major || 'Wait To Upload'}}</span>
+                    </div>
+                  </div>
+
+                  <div class="meta-card">
+                    <i class="el-icon-phone detail-icon"></i>
+                    <div>
+                      <span class="meta-label">Contact</span>
+                      <span class="meta-value">Wait To Upload</span>
+                    </div>
+                  </div>
+
+                  <div class="meta-card">
+                    <i class="el-icon-time detail-icon"></i>
+                    <div>
+                      <span class="meta-label">Degree</span>
+                      <span class="meta-value">Wait To Upload</span>
+                    </div>
+                  </div>
+
+                  <div class="meta-card">
+                    <i class="el-icon-house detail-icon"></i>
+                    <div>
+                      <span class="meta-label">Address</span>
+                      <span class="meta-value">Wait To Upload</span>
+                    </div>
+                  </div>
                 </div>
+
+                <div class="profile-actions">
+                  <el-button type="primary" icon="el-icon-edit" @click="userInfoDialogVisible = true" class="edit-profile-btn">
+                    Edit Your Profile
+                  </el-button>
+                </div>
+              </div>
             </div>
-            <app-foot></app-foot>
-        </app-body>
-    </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Personal Information Dialog -->
+      <el-dialog
+          @close="finishEdit"
+          title="Edit Personal Information"
+          :visible.sync="userInfoDialogVisible"
+          width="500px"
+          class="user-edit-dialog">
+        <div class="edit-form">
+          <div class="form-section">
+            <h4>Basic Information</h4>
+            <div class="form-item">
+              <label>Nickname</label>
+              <el-input
+                  v-model="userInfo.nickname"
+                  :disabled="notUserNicknameEdit"
+                  @change="saveUserNickname"
+                  maxlength="20"
+                  show-word-limit>
+                <el-button slot="append" type="warning" icon="el-icon-edit"
+                           @click="notUserNicknameEdit = false">Edit
+                </el-button>
+              </el-input>
+            </div>
+
+            <div class="form-item">
+              <label>Major</label>
+              <el-input v-model="userInfo.major" placeholder="Please enter your major" maxlength="50"></el-input>
+            </div>
+
+            <div class="form-item">
+              <label>Degree</label>
+              <el-select v-model="userInfo.degree" placeholder="Please select degree">
+                <el-option label="Bachelor's" value="Bachelor's"></el-option>
+                <el-option label="Master's" value="Master's"></el-option>
+                <el-option label="PhD" value="PhD"></el-option>
+                <el-option label="Other" value="Other"></el-option>
+              </el-select>
+            </div>
+
+            <div class="form-item">
+              <label>Country</label>
+              <el-input v-model="userInfo.national" placeholder="Please enter your country" maxlength="30"></el-input>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h4>Password Change</h4>
+            <div v-if="userPasswordEdit">
+              <div class="form-item">
+                <label>Current Password</label>
+                <el-input v-model="userPassword1" show-password placeholder="Please enter current password"></el-input>
+              </div>
+              <div class="form-item">
+                <label>New Password</label>
+                <el-input v-model="userPassword2" show-password placeholder="Please enter new password"></el-input>
+              </div>
+              <div class="form-item">
+                <label>Confirm New Password</label>
+                <el-input v-model="userPassword3" show-password placeholder="Please enter new password again"></el-input>
+              </div>
+              <div class="password-actions">
+                <el-button @click="cancelPasswordEdit">Cancel</el-button>
+                <el-button type="primary" @click="savePassword">Confirm Change</el-button>
+              </div>
+            </div>
+            <div v-else>
+              <div class="form-item">
+                <label>Password</label>
+                <el-input
+                    value="••••••••"
+                    :disabled="true">
+                  <el-button slot="append" type="warning" icon="el-icon-edit"
+                             @click="userPasswordEdit = true">Change Password
+                  </el-button>
+                </el-input>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="userInfoDialogVisible=false">Close</el-button>
+          <el-button type="primary" @click="saveUserInfo">Save Information</el-button>
+        </span>
+      </el-dialog>
+
+      <!-- Items and Orders Management Section -->
+      <div class="items-management-section">
+        <div class="section-header">
+          <h3>My Items and Orders</h3>
+        </div>
+
+        <el-tabs v-model="activeName" @tab-click="handleClick" class="custom-tabs">
+          <el-tab-pane name="1">
+            <span slot="label">
+              <i class="el-icon-sell"></i>
+              Want Sell
+            </span>
+          </el-tab-pane>
+          <el-tab-pane name="2">
+            <span slot="label">
+              <i class="el-icon-refresh"></i>
+              Want Exchange
+            </span>
+          </el-tab-pane>
+          <el-tab-pane name="3">
+            <span slot="label">
+              <i class="el-icon-remove"></i>
+              My Delisted
+            </span>
+          </el-tab-pane>
+          <el-tab-pane name="4">
+            <span slot="label">
+              <i class="el-icon-star-on"></i>
+              My Favorites
+            </span>
+          </el-tab-pane>
+          <el-tab-pane name="5">
+            <span slot="label">
+              <i class="el-icon-sold-out"></i>
+              My Sales
+            </span>
+          </el-tab-pane>
+          <el-tab-pane name="6">
+            <span slot="label">
+              <i class="el-icon-shopping-bag-2"></i>
+              My Purchases
+            </span>
+          </el-tab-pane>
+        </el-tabs>
+
+        <div class="items-grid">
+          <div v-if="dataList[activeName-1] && dataList[activeName-1].length === 0" class="empty-state">
+            <i class="el-icon-box"></i>
+            <p>No related data available</p>
+          </div>
+
+          <div v-for="(item,index) in dataList[activeName-1]"
+               :key="index"
+               class="item-card"
+               @click="toDetails(activeName,item)">
+            <div class="item-image">
+              <el-image
+                  :src="item.imgUrl"
+                  fit="cover">
+                <div slot="error" class="image-error">
+                  <i class="el-icon-picture-outline"></i>
+                </div>
+              </el-image>
+              <div class="item-status" v-if="activeName==='5'||activeName==='6'">
+                <span class="status-badge" :class="'status-' + item.orderStatus">
+                  {{orderStatus[item.orderStatus]}}
+                </span>
+              </div>
+            </div>
+
+            <div class="item-content">
+              <h4 class="item-title">{{item.idleName}}</h4>
+              <p class="item-description">{{item.idleDetails}}</p>
+              <div class="item-meta">
+                <span class="item-time">{{item.timeStr}}</span>
+              </div>
+              <div class="item-footer">
+                <div class="item-price">￥{{item.idlePrice}}</div>
+                <el-button
+                    v-if="activeName==='3'||activeName==='4'"
+                    :type="activeName==='4' ? 'warning' : 'danger'"
+                    size="mini"
+                    plain
+                    @click.stop="handle(activeName,item,index)">
+                  {{handleName[activeName-1]}}
+                </el-button>
+                <el-button
+                    v-if="activeName==='1'"
+                    type="success"
+                    size="mini"
+                    plain
+                    @click.stop="handleSell(item,index)">
+                  Publish for Sale
+                </el-button>
+                <el-button
+                    v-if="activeName==='2'"
+                    type="primary"
+                    size="mini"
+                    plain
+                    @click.stop="handleExchange(item,index)">
+                  Propose Exchange
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <app-foot></app-foot>
+    </app-body>
+  </div>
 </template>
 
 <script>
-    import AppHead from '../common/AppHeader.vue';
-    import AppBody from '../common/AppPageBody.vue'
-    import AppFoot from '../common/AppFoot.vue'
-    import options from '../common/country-data.js'
+import AppHead from '../common/AppHeader.vue';
+import AppBody from '../common/AppPageBody.vue'
+import AppFoot from '../common/AppFoot.vue'
 
-    export default {
-        name: "me",
-        components: {
-            AppHead,
-            AppBody,
-            AppFoot
-        },
-        data() {
-            return {
-                imgFileList: [],
-                addressInfo: {
-                    consigneeName: '',
-                    consigneePhone: '',
-                    provinceName: '',
-                    cityName: '',
-                    regionName: '',
-                    detailAddress: '',
-                    defaultFlag: false
-                },
-                activeName: '1',
-                handleName: ['下架', '删除', '取消收藏', '', ''],
-                dataList: [
-                    [],
-                    [],
-                    [],
-                    [],
-                    [],
-                    [],
-                    [],
-                    [],
-                ],
-                orderStatus: ['待付款', '待发货', '待收货', '已完成', '已取消'],
-                userInfoDialogVisible: false,
-                notUserNicknameEdit: true,
-                userPasswordEdit: false,
-                userPassword1: '',
-                userPassword2: '',
-                userPassword3: '',
-                eidtAddress: false,
-                selectedOptions: [],//存放默认值
-                options: options,   //存放城市数据,
-                userInfo: {
-                    accountNumber: "",
-                    avatar: "",
-                    nickname: "",
-                    signInTime: "",
-                },
-                addressData: []
-            };
-        },
-        created() {
-            if (!this.$globalData.userInfo.nickname) {
-                this.$api.getUserInfo().then(res => {
-                    if (res.status_code === 1) {
-                        res.data.signInTime = res.data.signInTime.substring(0, 10);
-                        console.log(res.data);
-                        this.$globalData.userInfo = res.data;
-                        this.userInfo = this.$globalData.userInfo;
-                    }
-                })
-            } else {
-                this.userInfo = this.$globalData.userInfo;
-                console.log(this.userInfo);
-            }
-            this.getAddressData();
-            this.getIdleItemData();
-            this.getMyOrder();
-            this.getMySoldIdle();
-            this.getMyFavorite();
-        },
-        methods: {
-            getMyFavorite(){
-                this.$api.getMyFavorite().then(res=>{
-                    console.log('getMyFavorite',res);
-                    if (res.status_code === 1){
-                        for (let i = 0; i < res.data.length; i++) {
-                            let pictureList = JSON.parse(res.data[i].idleItem.pictureList);
-                            this.dataList[2].push({
-                                favoriteId:res.data[i].id,
-                                id:res.data[i].idleItem.id,
-                                imgUrl:pictureList.length > 0 ? pictureList[0] : '',
-                                idleName:res.data[i].idleItem.idleName,
-                                idleDetails:res.data[i].idleItem.idleDetails,
-                                timeStr:res.data[i].createTime.substring(0, 10) + " " + res.data[i].createTime.substring(11, 19),
-                                idlePrice:res.data[i].idleItem.idlePrice
-                            });
-                        }
-                    }
-                })
-            },
-            getMySoldIdle(){
-                this.$api.getMySoldIdle().then(res=>{
-                    if (res.status_code === 1){
-                        console.log('getMySoldIdle',res.data);
-                        for (let i = 0; i < res.data.length; i++) {
-                            let pictureList = JSON.parse(res.data[i].idleItem.pictureList);
-                            this.dataList[3].push({
-                                id:res.data[i].id,
-                                imgUrl:pictureList.length > 0 ? pictureList[0] : '',
-                                idleName:res.data[i].idleItem.idleName,
-                                idleDetails:res.data[i].idleItem.idleDetails,
-                                timeStr:res.data[i].createTime.substring(0, 10) + " " + res.data[i].createTime.substring(11, 19),
-                                idlePrice:res.data[i].orderPrice,
-                                orderStatus:res.data[i].orderStatus
-                            });
-                        }
-                    }
-                })
-            },
-            getMyOrder(){
-                this.$api.getMyOrder().then(res=>{
-                    if (res.status_code === 1){
-                        console.log('getMyOrder',res.data);
-                        for (let i = 0; i < res.data.length; i++) {
-                            let pictureList = JSON.parse(res.data[i].idleItem.pictureList);
-                            this.dataList[4].push({
-                                id:res.data[i].id,
-                                imgUrl:pictureList.length > 0 ? pictureList[0] : '',
-                                idleName:res.data[i].idleItem.idleName,
-                                idleDetails:res.data[i].idleItem.idleDetails,
-                                timeStr:res.data[i].createTime.substring(0, 10) + " " + res.data[i].createTime.substring(11, 19),
-                                idlePrice:res.data[i].orderPrice,
-                                orderStatus:res.data[i].orderStatus
-                            });
-                        }
-                    }
-                })
-            },
-            getIdleItemData() {
-                this.$api.getAllIdleItem().then(res => {
-                    console.log(res);
-                    if (res.status_code === 1) {
-                        for (let i = 0; i < res.data.length; i++) {
-                            res.data[i].timeStr = res.data[i].releaseTime.substring(0, 10) + " " + res.data[i].releaseTime.substring(11, 19);
-                            let pictureList = JSON.parse(res.data[i].pictureList);
-                            res.data[i].imgUrl = pictureList.length > 0 ? pictureList[0] : '';
-                            if (res.data[i].idleStatus === 1) {
-                                this.dataList[0].push(res.data[i]);
-                            } else if (res.data[i].idleStatus === 2) {
-                                this.dataList[1].push(res.data[i]);
-                            }
-                        }
-                    }
-                })
-            },
-            getAddressData() {
-                this.$api.getAddress().then(res => {
-                    if (res.status_code === 1) {
-                        let data = res.data;
-                        for (let i = 0; i < data.length; i++) {
-                            data[i].detailAddressText = data[i].provinceName + data[i].cityName + data[i].regionName + data[i].detailAddress;
-                            data[i].defaultAddress = data[i].defaultFlag ? '默认地址' : '设为默认';
-                        }
-                        console.log(data);
-                        this.addressData = data;
-                    }
-                })
-            },
-            handleClick(tab, event) {
-                // console.log(tab, event);
-                console.log(this.activeName);
-            },
-            saveUserNickname() {
-                this.notUserNicknameEdit = true;
-                this.$api.updateUserPublicInfo({
-                    nickname: this.userInfo.nickname
-                }).then(res => {
-                    console.log(res);
-                    this.$globalData.userInfo.nickname = this.userInfo.nickname;
-                })
-
-            },
-            savePassword() {
-                if (!this.userPassword1 || !this.userPassword2) {
-                    this.$message.error('密码为空！');
-                } else if (this.userPassword2 === this.userPassword3) {
-                    this.$api.updatePassword({
-                        oldPassword: this.userPassword1,
-                        newPassword: this.userPassword2
-                    }).then(res => {
-                        if (res.status_code === 1) {
-                            this.userPasswordEdit = false;
-                            this.$message({
-                                message: '修改成功！',
-                                type: 'success'
-                            });
-                            this.userPassword1 = '';
-                            this.userPassword2 = '';
-                            this.userPassword3 = '';
-                        } else {
-                            this.$message.error('旧密码错误，修改失败！');
-                        }
-                    })
-                } else {
-                    this.$message.error('两次输入的密码不一致！');
-                }
-
-            },
-            finishEdit() {
-                this.notUserNicknameEdit = true;
-                this.userInfoDialogVisible = false;
-                this.userPasswordEdit = false;
-            },
-            handleAddressChange(value) {
-                console.log(value);
-                this.addressInfo.provinceName = value[0];
-                this.addressInfo.cityName = value[1];
-                this.addressInfo.regionName = value[2];
-            },
-            handleEdit(index, row) {
-                console.log(index, row);
-                this.addressInfo = JSON.parse(JSON.stringify(row));
-                this.selectedOptions = ['', '', ''];
-                this.selectedOptions[0] = row.provinceName;
-                this.selectedOptions[1] = row.cityName;
-                this.selectedOptions[2] = row.regionName;
-            },
-            handleDelete(index, row) {
-                console.log(index, row);
-                this.$confirm('是否确定删除该地址?', '提示', {
-                    confirmButtonText: '确定',
-                    cancelButtonText: '取消',
-                    type: 'warning'
-                }).then(() => {
-                    this.$api.deleteAddress(row).then(res => {
-                        if (res.status_code === 1) {
-                            this.$message({
-                                message: '删除成功！',
-                                type: 'success'
-                            });
-                            this.addressData.splice(index, 1);
-                            if (row.defaultFlag && this.addressData.length > 0) {
-                                this.addressData[0].defaultFlag = true;
-                                this.addressData[0].defaultAddress = '默认地址';
-                                this.update({
-                                    id: this.addressData[0].id,
-                                    defaultFlag: true
-                                });
-                            }
-                        } else {
-                            this.$message.error('系统异常，删除失败！')
-                        }
-                    }).catch(() => {
-                        this.$message.error('网络异常！')
-                    });
-                }).catch(() => {
-                });
-
-            },
-            handleSetDefault(index, row) {
-                console.log(index, row);
-                row.defaultFlag = true;
-                this.update(row);
-            },
-            toDetails(activeName, item) {
-                if (activeName === '4'||activeName === '5') {
-                    this.$router.push({path: '/order', query: {id: item.id}});
-                } else {
-                    this.$router.push({path: '/details', query: {id: item.id}});
-                }
-            },
-            handle(activeName,item,index) {
-                console.log(activeName,item,index);
-                this.$confirm('是否确认？', '提示', {
-                    confirmButtonText: '确认',
-                    cancelButtonText: '取消',
-                    type: 'warning'
-                }).then(() => {
-                    if(activeName==='1'){
-                        this.$api.updateIdleItem({
-                            id:item.id,
-                            idleStatus:2
-                        }).then(res=>{
-                            console.log(res);
-                            if(res.status_code===1){
-                                this.dataList[0].splice(index,1);
-                                item.idleStatus=2;
-                                this.dataList[1].unshift(item);
-                            }else {
-                                this.$message.error(res.msg)
-                            }
-                        });
-                    }else if(activeName==='2'){
-                        this.$api.updateIdleItem({
-                            id:item.id,
-                            idleStatus:0
-                        }).then(res=>{
-                            console.log(res);
-                            if(res.status_code===1){
-                                this.dataList[1].splice(index,1);
-                            }else {
-                                this.$message.error(res.msg)
-                            }
-                        });
-                    }else if(activeName==='3'){
-                        this.$api.deleteFavorite({
-                            id: item.favoriteId
-                        }).then(res=>{
-                            console.log(res);
-                            if(res.status_code===1){
-                                this.$message({
-                                    message: '已取消收藏！',
-                                    type: 'success'
-                                });
-                                this.dataList[2].splice(index,1);
-                            }else {
-                                this.$message.error(res.msg)
-                            }
-                        }).catch(e=>{
-                        })
-                    }
-                }).catch(() => {
-                });
-
-            },
-            fileHandleSuccess(response, file, fileList) {
-                console.log("file:", response, file, fileList);
-                let imgUrl = response.data;
-                this.imgFileList = [];
-                this.$api.updateUserPublicInfo({
-                    avatar: imgUrl
-                }).then(res => {
-                    console.log(res);
-                    this.userInfo.avatar = imgUrl;
-                    this.$globalData.userInfo.avatar = imgUrl;
-                })
-            },
-            update(data) {
-                this.$api.updateAddress(data).then(res => {
-                    if (res.status_code === 1) {
-                        this.getAddressData();
-                        this.$message({
-                            message: '修改成功！',
-                            type: 'success'
-                        });
-                    } else {
-                        this.$message.error('系统异常，修改失败！')
-                    }
-                }).catch(() => {
-                    this.$message.error('网络异常！')
-                })
-            },
-            saveAddress() {
-                if (this.addressInfo.id) {
-                    console.log('update:', this.addressInfo);
-                    this.update(this.addressInfo);
-                    this.addressInfo = {
-                        consigneeName: '',
-                        consigneePhone: '',
-                        provinceName: '',
-                        cityName: '',
-                        regionName: '',
-                        detailAddress: '',
-                        defaultFlag: false
-                    };
-                    this.selectedOptions = [];
-                } else {
-                    if (this.addressData.length >= 5) {
-                        this.$message.error('已达到最大地址数量！')
-                    } else {
-                        console.log(this.addressInfo);
-                        this.$api.addAddress(this.addressInfo).then(res => {
-                            if (res.status_code === 1) {
-                                this.getAddressData();
-                                this.$message({
-                                    message: '新增成功！',
-                                    type: 'success'
-                                });
-                                this.selectedOptions = [];
-                                this.addressInfo = {
-                                    consigneeName: '',
-                                    consigneePhone: '',
-                                    provinceName: '',
-                                    cityName: '',
-                                    regionName: '',
-                                    detailAddress: '',
-                                    defaultFlag: false
-                                };
-                            } else {
-                                this.$message.error('系统异常，新增失败！')
-                            }
-                        }).catch(e => {
-                            this.$message.error('网络异常！')
-                        })
-                    }
-                }
-            }
+export default {
+  name: "me",
+  components: {
+    AppHead,
+    AppBody,
+    AppFoot
+  },
+  data() {
+    return {
+      imgFileList: [],
+      activeName: '1',
+      handleName: ['Publish', 'Exchange', 'Delete', 'Remove Favorite', '', ''],
+      dataList: [[], [], [], [], [], []], // Sell, Exchange, Delisted, Favorites, Sales, Purchases
+      orderStatus: ['Pending Payment', 'Pending Shipment', 'Pending Receipt', 'Completed', 'Cancelled'],
+      userInfoDialogVisible: false,
+      notUserNicknameEdit: true,
+      userPasswordEdit: false,
+      userPassword1: '',
+      userPassword2: '',
+      userPassword3: '',
+      userInfo: {
+        accountNumber: "",
+        avatar: "",
+        nickname: "",
+        signInTime: "",
+        major: "",
+        national: "",
+        degree: "",
+        rating: "5.0"
+      }
+    };
+  },
+  created() {
+    if (!this.$globalData.userInfo.nickname) {
+      this.$api.getUserInfo().then(res => {
+        if (res.status_code === 1) {
+          res.data.signInTime = res.data.signInTime.substring(0, 10);
+          this.$globalData.userInfo = res.data;
+          this.userInfo = this.$globalData.userInfo;
         }
+      })
+    } else {
+      this.userInfo = this.$globalData.userInfo;
     }
+    this.getIdleItemData();
+    this.getMyOrder();
+    this.getMySoldIdle();
+    this.getMyFavorite();
+    this.getSellItems();
+    this.getExchangeItems();
+  },
+  methods: {
+    getSellItems() {
+      // 获取用户发布的出售物品 (idle_trade = 1)
+      this.$api.getAllIdleItem().then(res => {
+        if (res.status_code === 1) {
+          this.dataList[0] = [];
+          for (let i = 0; i < res.data.length; i++) {
+            if (res.data[i].idle_trade === 1 && res.data[i].user_id === this.$globalData.userInfo.id) {
+              res.data[i].timeStr = res.data[i].releaseTime.substring(0, 10) + " " + res.data[i].releaseTime.substring(11, 19);
+              let pictureList = JSON.parse(res.data[i].pictureList);
+              res.data[i].imgUrl = pictureList.length > 0 ? pictureList[0] : '';
+              this.dataList[0].push(res.data[i]);
+            }
+          }
+        }
+      })
+    },
+    getExchangeItems() {
+      // 获取用户发布的交换物品 (idle_trade = 2)
+      this.$api.getAllIdleItem().then(res => {
+        if (res.status_code === 1) {
+          this.dataList[1] = [];
+          for (let i = 0; i < res.data.length; i++) {
+            if (res.data[i].idle_trade === 2 && res.data[i].user_id === this.$globalData.userInfo.id) {
+              res.data[i].timeStr = res.data[i].releaseTime.substring(0, 10) + " " + res.data[i].releaseTime.substring(11, 19);
+              let pictureList = JSON.parse(res.data[i].pictureList);
+              res.data[i].imgUrl = pictureList.length > 0 ? pictureList[0] : '';
+              this.dataList[1].push(res.data[i]);
+            }
+          }
+        }
+      })
+    },
+    handleSell(item, index) {
+      this.$confirm('Confirm to list this item for sale?', 'Confirmation', {
+        confirmButtonText: 'Confirm',
+        cancelButtonText: 'Cancel',
+        type: 'warning'
+      }).then(() => {
+        // Handle sell logic here
+        this.$message.success('Item listed for sale successfully!');
+      });
+    },
+    handleExchange(item, index) {
+      this.$confirm('Confirm to propose this item for exchange?', 'Confirmation', {
+        confirmButtonText: 'Confirm',
+        cancelButtonText: 'Cancel',
+        type: 'warning'
+      }).then(() => {
+        // Handle exchange logic here
+        this.$message.success('Exchange proposal submitted successfully!');
+      });
+    },
+    getMyFavorite(){
+      this.$api.getMyFavorite().then(res=>{
+        if (res.status_code === 1){
+          for (let i = 0; i < res.data.length; i++) {
+            let pictureList = JSON.parse(res.data[i].idleItem.pictureList);
+            this.dataList[3].push({
+              favoriteId:res.data[i].id,
+              id:res.data[i].idleItem.id,
+              imgUrl:pictureList.length > 0 ? pictureList[0] : '',
+              idleName:res.data[i].idleItem.idleName,
+              idleDetails:res.data[i].idleItem.idleDetails,
+              timeStr:res.data[i].createTime.substring(0, 10) + " " + res.data[i].createTime.substring(11, 19),
+              idlePrice:res.data[i].idleItem.idlePrice
+            });
+          }
+        }
+      })
+    },
+    getMySoldIdle(){
+      this.$api.getMySoldIdle().then(res=>{
+        if (res.status_code === 1){
+          for (let i = 0; i < res.data.length; i++) {
+            let pictureList = JSON.parse(res.data[i].idleItem.pictureList);
+            this.dataList[4].push({
+              id:res.data[i].id,
+              imgUrl:pictureList.length > 0 ? pictureList[0] : '',
+              idleName:res.data[i].idleItem.idleName,
+              idleDetails:res.data[i].idleItem.idleDetails,
+              timeStr:res.data[i].createTime.substring(0, 10) + " " + res.data[i].createTime.substring(11, 19),
+              idlePrice:res.data[i].orderPrice,
+              orderStatus:res.data[i].orderStatus
+            });
+          }
+        }
+      })
+    },
+    getMyOrder(){
+      this.$api.getMyOrder().then(res=>{
+        if (res.status_code === 1){
+          for (let i = 0; i < res.data.length; i++) {
+            let pictureList = JSON.parse(res.data[i].idleItem.pictureList);
+            this.dataList[5].push({
+              id:res.data[i].id,
+              imgUrl:pictureList.length > 0 ? pictureList[0] : '',
+              idleName:res.data[i].idleItem.idleName,
+              idleDetails:res.data[i].idleItem.idleDetails,
+              timeStr:res.data[i].createTime.substring(0, 10) + " " + res.data[i].createTime.substring(11, 19),
+              idlePrice:res.data[i].orderPrice,
+              orderStatus:res.data[i].orderStatus
+            });
+          }
+        }
+      })
+    },
+    getIdleItemData() {
+      this.$api.getAllIdleItem().then(res => {
+        if (res.status_code === 1) {
+          for (let i = 0; i < res.data.length; i++) {
+            res.data[i].timeStr = res.data[i].releaseTime.substring(0, 10) + " " + res.data[i].releaseTime.substring(11, 19);
+            let pictureList = JSON.parse(res.data[i].pictureList);
+            res.data[i].imgUrl = pictureList.length > 0 ? pictureList[0] : '';
+            if (res.data[i].idleStatus === 2) {
+              this.dataList[2].push(res.data[i]);
+            }
+          }
+        }
+      })
+    },
+    handleClick(tab, event) {
+      console.log(this.activeName);
+    },
+    saveUserNickname() {
+      this.notUserNicknameEdit = true;
+      this.$api.updateUserPublicInfo({
+        nickname: this.userInfo.nickname
+      }).then(res => {
+        this.$globalData.userInfo.nickname = this.userInfo.nickname;
+        this.$message.success('Nickname updated successfully!');
+      }).catch(() => {
+        this.$message.error('Update failed, please try again!');
+      })
+    },
+    saveUserInfo() {
+      this.$api.updateUserPublicInfo({
+        nickname: this.userInfo.nickname,
+        major: this.userInfo.major,
+        degree: this.userInfo.degree,
+        national: this.userInfo.national
+      }).then(res => {
+        if (res.status_code === 1) {
+          this.$globalData.userInfo = { ...this.$globalData.userInfo, ...this.userInfo };
+          this.$message.success('Information saved successfully!');
+          this.userInfoDialogVisible = false;
+        } else {
+          this.$message.error('Save failed, please try again!');
+        }
+      }).catch(() => {
+        this.$message.error('Network error, please try again!');
+      })
+    },
+    savePassword() {
+      if (!this.userPassword1 || !this.userPassword2) {
+        this.$message.error('Password cannot be empty!');
+      } else if (this.userPassword2 !== this.userPassword3) {
+        this.$message.error('The two passwords entered are inconsistent!');
+      } else if (this.userPassword2.length < 6) {
+        this.$message.error('New password length cannot be less than 6 characters!');
+      } else {
+        this.$api.updatePassword({
+          oldPassword: this.userPassword1,
+          newPassword: this.userPassword2
+        }).then(res => {
+          if (res.status_code === 1) {
+            this.userPasswordEdit = false;
+            this.$message.success('Password changed successfully!');
+            this.clearPasswordFields();
+          } else {
+            this.$message.error('Old password is incorrect, change failed!');
+          }
+        })
+      }
+    },
+    cancelPasswordEdit() {
+      this.userPasswordEdit = false;
+      this.clearPasswordFields();
+    },
+    clearPasswordFields() {
+      this.userPassword1 = '';
+      this.userPassword2 = '';
+      this.userPassword3 = '';
+    },
+    finishEdit() {
+      this.notUserNicknameEdit = true;
+      this.userInfoDialogVisible = false;
+      this.userPasswordEdit = false;
+      this.clearPasswordFields();
+    },
+    toDetails(activeName, item) {
+      if (activeName === '5'||activeName === '6') {
+        this.$router.push({path: '/order', query: {id: item.id}});
+      } else if (activeName === '1') {
+        this.$router.push({path: '/sell', query: {id: item.id}});
+      } else if (activeName === '2') {
+        this.$router.push({path: '/exchange', query: {id: item.id}});
+      } else {
+        this.$router.push({path: '/details', query: {id: item.id}});
+      }
+    },
+    handle(activeName,item,index) {
+      const confirmText = activeName === '3' ? 'Confirm to delete this item?' : 'Confirm to remove from favorites?';
+
+      this.$confirm(confirmText, 'Confirmation', {
+        confirmButtonText: 'Confirm',
+        cancelButtonText: 'Cancel',
+        type: 'warning'
+      }).then(() => {
+        if(activeName==='3'){
+          this.$api.updateIdleItem({
+            id:item.id,
+            idleStatus:0
+          }).then(res=>{
+            if(res.status_code===1){
+              this.dataList[2].splice(index,1);
+              this.$message.success('Item has been deleted');
+            }else {
+              this.$message.error(res.msg)
+            }
+          });
+        }else if(activeName==='4'){
+          this.$api.deleteFavorite({
+            id: item.favoriteId
+          }).then(res=>{
+            if(res.status_code===1){
+              this.$message.success('Removed from favorites!');
+              this.dataList[3].splice(index,1);
+            }else {
+              this.$message.error(res.msg)
+            }
+          })
+        }
+      });
+    },
+    fileHandleSuccess(response, file, fileList) {
+      let imgUrl = response.data;
+      this.imgFileList = [];
+      this.$api.updateUserPublicInfo({
+        avatar: imgUrl
+      }).then(res => {
+        this.userInfo.avatar = imgUrl;
+        this.$globalData.userInfo.avatar = imgUrl;
+        this.$message.success('Avatar updated successfully!');
+      }).catch(() => {
+        this.$message.error('Avatar update failed!');
+      })
+    }
+  }
+}
 </script>
 
 <style scoped>
+/* User Profile Section Styles - Transparent glassmorphism design */
+.user-profile-section {
+  padding: 0;
+  background: #1e7c8e;
+  margin-bottom: 30px;
+  min-height: 400px;
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(30, 124, 142, 0.3);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: cardRiseIn 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
 
-    .user-info-details {
-        display: flex;
-        height: 140px;
-        align-items: center;
-        margin: 20px 40px;
-    }
+@keyframes cardRiseIn {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+  60% {
+    opacity: 0.8;
+    transform: translateY(-5px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 
-    .user-info-details-text {
-        margin-left: 20px;
-    }
+.user-profile-card {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  height: 100%;
+}
 
-    .user-info-details-text-nickname {
-        font-size: 26px;
-        font-weight: 600;
-        margin: 10px 0;
-    }
+/* Profile Header Design */
+.profile-header {
+  position: relative;
+  padding: 40px 30px 30px;
+}
 
-    .user-info-details-text-time {
-        font-size: 14px;
-        margin-bottom: 10px;
-    }
+.cover-gradient {
+  width: 100%;
+  height: 100%;
+  background: rgba(255,255,255,0.08);
+}
 
-    .user-info-splace {
-        margin-right: 90px;
-    }
+.header-decoration {
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  border-radius: 50%;
+}
 
-    .idle-container {
-        padding: 0 20px;
-    }
+.header-decoration::before {
+  content: '';
+  position: absolute;
+  top: 20%;
+  left: 20%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+  border-radius: 50%;
+}
 
-    .idle-container-list {
-        min-height: 55vh;
-    }
+.profile-main {
+  position: relative;
+  z-index: 2;
+  margin-top: 60px;
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
 
-    .idle-container-list-item {
-        border-bottom: 1px solid #eeeeee;
-        cursor: pointer;
-    }
+.avatar-section {
+  flex-shrink: 0;
+}
 
-    .idle-container-list-item:last-child {
-        border-bottom: none;
-    }
+.avatar-wrapper {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
 
-    .idle-container-list-item-detile {
-        height: 120px;
-        display: flex;
-        align-items: center;
-    }
+/* Removed avatarFloat animation */
 
-    .idle-container-list-item-text {
-        margin-left: 10px;
-        height: 100px;
-        max-width: 800px;
-    }
+.avatar-wrapper:hover {
+  transform: translateY(-8px) scale(1.05);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.5);
+}
 
-    .idle-container-list-title {
-        font-weight: 600;
-        font-size: 18px;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-    }
+.avatar-wrapper:hover .avatar-overlay {
+  opacity: 1;
+}
 
-    .idle-container-list-idle-details {
-        font-size: 14px;
-        color: #555555;
-        padding-top: 5px;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-    }
+.user-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
 
-    .idle-container-list-idle-time {
-        font-size: 13px;
-        padding-top: 5px;
-    }
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: rgba(12, 18, 64, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  color: white;
+}
 
-    .idle-prive {
-        font-size: 15px;
-        padding-top: 5px;
-        color: red;
-    }
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(30, 124, 142, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  opacity: 0;
+  transition: all 0.3s ease;
+  border-radius: 50%;
+  backdrop-filter: blur(10px);
+}
 
-    .edit-tip {
-        font-size: 14px;
-        margin: 10px 5px;
-    }
+.avatar-overlay i {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
 
-    .address-container {
-        padding: 10px 20px;
-    }
+.avatar-overlay span {
+  font-size: 12px;
+  font-weight: 600;
+}
 
-    .address-container-back {
-        margin-bottom: 10px;
-    }
+.profile-info {
+  flex: 1;
+  color: white;
+}
 
-    .address-container-add-title {
-        font-size: 15px;
-        color: #409EFF;
-        padding: 10px;
-    }
+.name-and-rating {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 25px;
+}
 
-    .address-container-add-item {
-        margin-bottom: 20px;
-    }
+.user-nickname {
+  font-size: 36px;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+  letter-spacing: -0.5px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
 
-    .demonstration {
-        color: #666666;
-        font-size: 14px;
-        padding: 10px;
-    }
+.user-rating {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.2);
+  padding: 10px 18px;
+  border-radius: 25px;
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
 
-    .address-container-add {
-        padding: 0 200px;
-    }
+.rating-stars {
+  color: #ffd700;
+  font-size: 16px;
+  display: flex;
+  gap: 2px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
 
-    .address-container-list {
-        padding: 30px 100px;
-    }
+.rating-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
 
-    .idle-item-foot {
-        width: 800px;
-        display: flex;
-        justify-content: space-between;
-    }
+.user-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.meta-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(15px);
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.meta-card:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.detail-icon {
+  color: #ffd700;
+  font-size: 20px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.meta-card div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.meta-value {
+  font-size: 15px;
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.profile-actions {
+  display: flex;
+  gap: 15px;
+}
+
+.edit-profile-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  color: white;
+  padding: 14px 28px;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 16px;
+  backdrop-filter: blur(15px);
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.edit-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+.edit-profile-btn:active {
+  transform: translateY(-2px);
+}
+
+/* Edit Dialog Styles */
+.user-edit-dialog .el-dialog {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(30, 124, 142, 0.3);
+  border: 1px solid rgba(30, 124, 142, 0.1);
+}
+
+.user-edit-dialog .el-dialog__header {
+  background: #1e7c8e;
+  color: white;
+  padding: 25px 30px;
+}
+
+.user-edit-dialog .el-dialog__title {
+  color: white;
+  font-weight: 700;
+  font-size: 20px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.user-edit-dialog .el-dialog__headerbtn .el-dialog__close {
+  color: white;
+  font-size: 20px;
+}
+
+.edit-form {
+  padding: 30px;
+  background: #f8f9ff;
+}
+
+.form-section {
+  margin-bottom: 35px;
+}
+
+.form-section h4 {
+  color: #0c1240;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 3px solid rgba(30, 124, 142, 0.2);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.form-item {
+  margin-bottom: 25px;
+}
+
+.form-item label {
+  display: block;
+  margin-bottom: 10px;
+  color: #0c1240;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.form-item .el-input input {
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  transition: all 0.3s ease;
+  padding: 12px 15px;
+  font-size: 15px;
+}
+
+.form-item .el-input input:focus {
+  border-color: #1e7c8e;
+  box-shadow: 0 0 0 4px rgba(30, 124, 142, 0.15);
+}
+
+.form-item .el-select {
+  width: 100%;
+}
+
+.form-item .el-select .el-input__inner {
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  padding: 12px 15px;
+  font-size: 15px;
+}
+
+.password-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+}
+
+.password-actions .el-button {
+  border-radius: 12px;
+  font-weight: 600;
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+.password-actions .el-button--primary {
+  background: #1e7c8e;
+  border-color: #1e7c8e;
+}
+
+.password-actions .el-button--primary:hover {
+  background: #2ba3b8;
+  border-color: #2ba3b8;
+  transform: translateY(-2px);
+}
+
+/* Items Management Section Styles */
+.items-management-section {
+  padding: 0 30px 30px;
+}
+
+.section-header {
+  margin-bottom: 30px;
+}
+
+.section-header h3 {
+  color: #0c1240;
+  font-size: 32px;
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  text-shadow: 0 2px 4px rgba(30, 124, 142, 0.1);
+}
+
+.custom-tabs {
+  background: white;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 40px rgba(30, 124, 142, 0.12);
+  border: 1px solid rgba(30, 124, 142, 0.08);
+  animation: tabsRiseIn 0.6s ease-out 0.3s both;
+}
+
+@keyframes tabsRiseIn {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.custom-tabs .el-tabs__header {
+  margin-bottom: 25px;
+}
+
+.custom-tabs .el-tabs__item {
+  font-size: 16px;
+  font-weight: 700;
+  padding: 18px 30px;
+  color: #64748b;
+  transition: all 0.3s ease;
+  border-radius: 15px 15px 0 0;
+  margin-right: 5px;
+}
+
+.custom-tabs .el-tabs__item:hover {
+  color: #1e7c8e;
+  background: rgba(30, 124, 142, 0.05);
+  transform: translateY(-2px);
+}
+
+.custom-tabs .el-tabs__item.is-active {
+  color: #1e7c8e;
+  background: rgba(30, 124, 142, 0.1);
+  box-shadow: 0 4px 15px rgba(30, 124, 142, 0.2);
+}
+
+.custom-tabs .el-tabs__item i {
+  margin-right: 10px;
+  font-size: 18px;
+}
+
+.custom-tabs .el-tabs__active-bar {
+  background: #1e7c8e;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 25px;
+  margin-top: 30px;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 100px 20px;
+  color: #64748b;
+}
+
+.empty-state i {
+  font-size: 80px;
+  margin-bottom: 25px;
+  display: block;
+  color: #1e7c8e;
+  opacity: 0.4;
+}
+
+.empty-state p {
+  font-size: 20px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.item-card {
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(30, 124, 142, 0.12);
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  cursor: pointer;
+  border: 1px solid rgba(30, 124, 142, 0.08);
+  animation: itemCardRise 0.6s ease-out;
+  animation-fill-mode: both;
+}
+
+.item-card:nth-child(1) { animation-delay: 0.1s; }
+.item-card:nth-child(2) { animation-delay: 0.2s; }
+.item-card:nth-child(3) { animation-delay: 0.3s; }
+.item-card:nth-child(4) { animation-delay: 0.4s; }
+.item-card:nth-child(5) { animation-delay: 0.5s; }
+.item-card:nth-child(6) { animation-delay: 0.6s; }
+
+@keyframes itemCardRise {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.item-card:hover {
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 0 25px 50px rgba(30, 124, 142, 0.2);
+  border-color: rgba(30, 124, 142, 0.15);
+}
+
+.item-image {
+  position: relative;
+  height: 240px;
+  overflow: hidden;
+}
+
+.item-image .el-image {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.4s ease;
+}
+
+.item-card:hover .item-image .el-image {
+  transform: scale(1.1);
+}
+
+.image-error {
+  width: 100%;
+  height: 100%;
+  background: #f8f9ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1e7c8e;
+  font-size: 40px;
+  opacity: 0.6;
+}
+
+.item-status {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+}
+
+.status-badge {
+  padding: 8px 16px;
+  border-radius: 25px;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.status-0 { background: rgba(245, 108, 108, 0.9); }
+.status-1 { background: rgba(230, 162, 60, 0.9); }
+.status-2 { background: rgba(64, 158, 255, 0.9); }
+.status-3 { background: rgba(103, 194, 58, 0.9); }
+.status-4 { background: rgba(144, 147, 153, 0.9); }
+
+.item-content {
+  padding: 25px;
+}
+
+.item-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0c1240;
+  margin: 0 0 12px 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  letter-spacing: -0.5px;
+}
+
+.item-description {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0 0 18px 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.item-meta {
+  margin-bottom: 20px;
+}
+
+.item-time {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.item-price {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1e7c8e;
+  letter-spacing: -0.5px;
+  text-shadow: 0 1px 3px rgba(30, 124, 142, 0.2);
+}
+
+.item-footer .el-button {
+  border-radius: 12px;
+  font-weight: 700;
+  padding: 10px 18px;
+  transition: all 0.3s ease;
+}
+
+.item-footer .el-button--success {
+  background: #67c23a;
+  border-color: #67c23a;
+  color: white;
+}
+
+.item-footer .el-button--success:hover {
+  background: #85ce61;
+  border-color: #85ce61;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(103, 194, 58, 0.4);
+}
+
+.item-footer .el-button--primary {
+  background: #1e7c8e;
+  border-color: #1e7c8e;
+  color: white;
+}
+
+.item-footer .el-button--primary:hover {
+  background: #2ba3b8;
+  border-color: #2ba3b8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(30, 124, 142, 0.4);
+}
+
+.item-footer .el-button--warning {
+  background: #e6a23c;
+  border-color: #e6a23c;
+  color: white;
+}
+
+.item-footer .el-button--warning:hover {
+  background: #ebb563;
+  border-color: #ebb563;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(230, 162, 60, 0.4);
+}
+
+.item-footer .el-button--danger {
+  background: #f56c6c;
+  border-color: #f56c6c;
+  color: white;
+}
+
+.item-footer .el-button--danger:hover {
+  background: #f78989;
+  border-color: #f78989;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 108, 108, 0.4);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .profile-main {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 25px;
+    margin-top: 40px;
+  }
+
+  .profile-info {
+    width: 100%;
+  }
+
+  .name-and-rating {
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .user-nickname {
+    font-size: 28px;
+  }
+
+  .user-meta-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .user-profile-section {
+    margin-bottom: 25px;
+  }
+
+  .profile-header {
+    padding: 30px 20px 25px;
+  }
+
+  .items-management-section {
+    padding: 0 20px 25px;
+  }
+
+  .custom-tabs {
+    padding: 20px;
+  }
+
+  .custom-tabs .el-tabs__item {
+    font-size: 14px;
+    padding: 15px 20px;
+  }
+}
+
+/* Enhanced Animation Effects - Removed hover animation for main profile */
+
+/* Loading Animation for Dynamic Content */
+.meta-card, .item-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.meta-card::before, .item-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+  transparent 0%,
+  rgba(255, 255, 255, 0.4) 50%,
+  transparent 100%);
+  transition: left 0.6s ease;
+  z-index: 1;
+}
+
+.meta-card:hover::before, .item-card:hover::before {
+  left: 100%;
+}
+
+/* Glowing Effect for Rating - Removed */
+.user-rating {
+  position: relative;
+}
+
+/* Custom Scrollbar */
+.items-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.items-grid::-webkit-scrollbar-track {
+  background: rgba(30, 124, 142, 0.1);
+  border-radius: 4px;
+}
+
+.items-grid::-webkit-scrollbar-thumb {
+  background: rgba(30, 124, 142, 0.6);
+  border-radius: 4px;
+}
+
+.items-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 124, 142, 0.8);
+}
 </style>
