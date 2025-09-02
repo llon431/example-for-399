@@ -52,4 +52,24 @@ public class User implements Serializable {
 
     private String UPI;
 
+    /**
+     * 科系/专业
+     */
+    private String major;
+
+    /**
+     * 国家
+     */
+    private String National;
+
+    /**
+     * 学位
+     */
+    private String degree;
+
+    /**
+     * 评分
+     */
+    private String rating;
+
 }

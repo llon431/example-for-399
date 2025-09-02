@@ -54,8 +54,8 @@
                   <div class="meta-card">
                     <i class="el-icon-location detail-icon"></i>
                     <div>
-                      <span class="meta-label">Nation</span>
-                      <span class="meta-value">{{userInfo.national || 'Wait To Upload'}}</span>
+                      <span class="meta-label">Country</span>
+                      <span class="meta-value">{{userInfo.National || 'Wait To Upload'}}</span>
                     </div>
                   </div>
 
@@ -68,26 +68,10 @@
                   </div>
 
                   <div class="meta-card">
-                    <i class="el-icon-phone detail-icon"></i>
-                    <div>
-                      <span class="meta-label">Contact</span>
-                      <span class="meta-value">Wait To Upload</span>
-                    </div>
-                  </div>
-
-                  <div class="meta-card">
                     <i class="el-icon-time detail-icon"></i>
                     <div>
                       <span class="meta-label">Degree</span>
-                      <span class="meta-value">Wait To Upload</span>
-                    </div>
-                  </div>
-
-                  <div class="meta-card">
-                    <i class="el-icon-house detail-icon"></i>
-                    <div>
-                      <span class="meta-label">Address</span>
-                      <span class="meta-value">Wait To Upload</span>
+                      <span class="meta-value">{{userInfo.degree || 'Wait To Upload'}}</span>
                     </div>
                   </div>
                 </div>
@@ -128,6 +112,11 @@
             </div>
 
             <div class="form-item">
+              <label>Country</label>
+              <el-input v-model="userInfo.National" placeholder="Please enter your country" maxlength="30"></el-input>
+            </div>
+
+            <div class="form-item">
               <label>Major</label>
               <el-input v-model="userInfo.major" placeholder="Please enter your major" maxlength="50"></el-input>
             </div>
@@ -140,11 +129,6 @@
                 <el-option label="PhD" value="PhD"></el-option>
                 <el-option label="Other" value="Other"></el-option>
               </el-select>
-            </div>
-
-            <div class="form-item">
-              <label>Country</label>
-              <el-input v-model="userInfo.national" placeholder="Please enter your country" maxlength="30"></el-input>
             </div>
           </div>
 
@@ -327,14 +311,17 @@ export default {
       userPassword2: '',
       userPassword3: '',
       userInfo: {
-        accountNumber: "",
-        avatar: "",
-        nickname: "",
-        signInTime: "",
-        major: "",
-        national: "",
-        degree: "",
-        rating: "5.0"
+        id: "", // 对应数据库 id 字段（BIGINT）
+        account_number: "", // 对应数据库 account_number 字段
+        Email_number: "", // 对应数据库 Email_number 字段
+        UPI: "", // 对应数据库 UPI 字段
+        avatar: "", // 对应数据库 avatar 字段
+        nickname: "", // 对应数据库 nickname 字段
+        sign_in_time: "", // 对应数据库 sign_in_time 字段
+        major: "", // 对应数据库 major 字段
+        National: "", // 对应数据库 National 字段（注意大写N）
+        degree: "", // 对应数据库 degree 字段
+        rating: "5.0" // 对应数据库 rating 字段
       }
     };
   },
@@ -342,7 +329,7 @@ export default {
     if (!this.$globalData.userInfo.nickname) {
       this.$api.getUserInfo().then(res => {
         if (res.status_code === 1) {
-          res.data.signInTime = res.data.signInTime.substring(0, 10);
+          res.data.sign_in_time = res.data.sign_in_time.substring(0, 10);
           this.$globalData.userInfo = res.data;
           this.userInfo = this.$globalData.userInfo;
         }
@@ -484,29 +471,50 @@ export default {
     saveUserNickname() {
       this.notUserNicknameEdit = true;
       this.$api.updateUserPublicInfo({
+        id: this.userInfo.id, // 添加用户ID用于数据库更新
         nickname: this.userInfo.nickname
       }).then(res => {
-        this.$globalData.userInfo.nickname = this.userInfo.nickname;
-        this.$message.success('Nickname updated successfully!');
+        if (res.status_code === 1) {
+          this.$globalData.userInfo.nickname = this.userInfo.nickname;
+          this.$message.success('Nickname updated successfully!');
+        } else {
+          this.$message.error('Update failed: ' + res.msg);
+        }
       }).catch(() => {
         this.$message.error('Update failed, please try again!');
       })
     },
     saveUserInfo() {
+      // 验证必填字段
+      if (!this.userInfo.nickname.trim()) {
+        this.$message.error('Nickname cannot be empty!');
+        return;
+      }
+
+      // 更新用户信息到数据库
       this.$api.updateUserPublicInfo({
-        nickname: this.userInfo.nickname,
-        major: this.userInfo.major,
+        id: this.userInfo.id, // 用户ID，用于WHERE条件
+        nickname: this.userInfo.nickname.trim(),
+        major: this.userInfo.major.trim(),
         degree: this.userInfo.degree,
-        national: this.userInfo.national
+        National: this.userInfo.National.trim() // 注意大写N，匹配数据库字段名
       }).then(res => {
         if (res.status_code === 1) {
-          this.$globalData.userInfo = { ...this.$globalData.userInfo, ...this.userInfo };
+          // 更新全局用户信息
+          this.$globalData.userInfo = {
+            ...this.$globalData.userInfo,
+            nickname: this.userInfo.nickname,
+            major: this.userInfo.major,
+            degree: this.userInfo.degree,
+            National: this.userInfo.National // 注意大写N，匹配数据库字段名
+          };
           this.$message.success('Information saved successfully!');
           this.userInfoDialogVisible = false;
         } else {
-          this.$message.error('Save failed, please try again!');
+          this.$message.error('Save failed: ' + (res.msg || 'Unknown error'));
         }
-      }).catch(() => {
+      }).catch((error) => {
+        console.error('Update user info error:', error);
         this.$message.error('Network error, please try again!');
       })
     },
@@ -519,6 +527,7 @@ export default {
         this.$message.error('New password length cannot be less than 6 characters!');
       } else {
         this.$api.updatePassword({
+          id: this.userInfo.id, // 添加用户ID
           oldPassword: this.userPassword1,
           newPassword: this.userPassword2
         }).then(res => {
@@ -529,6 +538,9 @@ export default {
           } else {
             this.$message.error('Old password is incorrect, change failed!');
           }
+        }).catch((error) => {
+          console.error('Password update error:', error);
+          this.$message.error('Password update failed, please try again!');
         })
       }
     },
@@ -596,11 +608,16 @@ export default {
       let imgUrl = response.data;
       this.imgFileList = [];
       this.$api.updateUserPublicInfo({
+        id: this.userInfo.id, // 添加用户ID
         avatar: imgUrl
       }).then(res => {
-        this.userInfo.avatar = imgUrl;
-        this.$globalData.userInfo.avatar = imgUrl;
-        this.$message.success('Avatar updated successfully!');
+        if (res.status_code === 1) {
+          this.userInfo.avatar = imgUrl;
+          this.$globalData.userInfo.avatar = imgUrl;
+          this.$message.success('Avatar updated successfully!');
+        } else {
+          this.$message.error('Avatar update failed: ' + res.msg);
+        }
       }).catch(() => {
         this.$message.error('Avatar update failed!');
       })
@@ -708,8 +725,6 @@ export default {
   backdrop-filter: blur(10px);
 }
 
-/* Removed avatarFloat animation */
-
 .avatar-wrapper:hover {
   transform: translateY(-8px) scale(1.05);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
@@ -731,21 +746,6 @@ export default {
   height: 100%;
   background: rgba(12, 18, 64, 0.8);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40px;
-  color: white;
-}
-
-.avatar-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(30, 124, 142, 0.9);
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   color: white;
@@ -815,7 +815,7 @@ export default {
 
 .user-meta-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 15px;
   margin-bottom: 25px;
 }
@@ -1359,7 +1359,7 @@ export default {
   }
 }
 
-/* Enhanced Animation Effects - Removed hover animation for main profile */
+/* Enhanced Animation Effects */
 
 /* Loading Animation for Dynamic Content */
 .meta-card, .item-card {
@@ -1386,7 +1386,6 @@ export default {
   left: 100%;
 }
 
-/* Glowing Effect for Rating - Removed */
 .user-rating {
   position: relative;
 }
@@ -1410,3 +1409,18 @@ export default {
   background: rgba(30, 124, 142, 0.8);
 }
 </style>
+font-size: 40px;
+color: white;
+}
+
+.avatar-overlay {
+position: absolute;
+top: 0;
+left: 0;
+right: 0;
+bottom: 0;
+background: rgba(30, 124, 142, 0.9);
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
