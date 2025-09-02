@@ -3,76 +3,68 @@
     <div class="bar">
       <!-- Left: brand -->
       <router-link class="brand" to="/">BAG2BAG</router-link>
+
       <!-- Center: simple bag mark (use your own logo if available) -->
       <img class="brand-mark" :src="logo" alt="BAG2BAG logo" />
+
       <!-- Right: actions -->
       <div class="actions">
-        <router-link class="login" to="/sign-in">Login</router-link>
-        <button class="menu-btn" aria-label="Open menu" @click="drawer = true">≡</button>
+        <!-- ✅ 新增：抽屉触发按钮 -->
+        <el-button class="menu-btn" icon="el-icon-menu" circle @click="drawer = true" />
       </div>
     </div>
-    <!-- Slide-out menu (Element UI Drawer) -->
+
     <el-drawer
         :visible.sync="drawer"
         direction="rtl"
         size="300px"
+        :with-header="false"
+        :append-to-body="true"
         custom-class="nav-drawer"
-        :modal-append-to-body="false"
     >
       <!-- User Profile Section -->
       <div class="user-section">
-        <div class="user-avatar" @click="goToProfile">
+        <div class="user-avatar" @click="goToProfile(); drawer = false">
           <img :src="userAvatar" alt="User avatar" />
         </div>
-        <div class="user-info" @click="goToProfile">
+        <div class="user-info" @click="goToProfile(); drawer = false">
           <div class="user-name">{{ userNickname }}</div>
           <div class="user-subtitle">View Profile</div>
         </div>
       </div>
 
-      <!-- Navigation Menu -->
       <nav class="drawer-nav">
-        <router-link to="/" @click.native="drawer = false" class="nav-item">
+        <router-link to="/"           @click.native="drawer = false" class="nav-item">
           <div class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
           </div>
           <span class="nav-text">Home</span>
         </router-link>
 
         <router-link to="/categories" @click.native="drawer = false" class="nav-item">
           <div class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/></svg>
           </div>
           <span class="nav-text">Categories</span>
         </router-link>
 
-        <router-link to="/publish" @click.native="drawer = false" class="nav-item">
+        <router-link to="/publish"    @click.native="drawer = false" class="nav-item">
           <div class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
           </div>
           <span class="nav-text">Post Item</span>
         </router-link>
 
-        <router-link to="/favorites" @click.native="drawer = false" class="nav-item">
+        <router-link to="/favorites"  @click.native="drawer = false" class="nav-item">
           <div class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="m12 21.35-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 21.35-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           </div>
           <span class="nav-text">My Favorites</span>
         </router-link>
 
-        <router-link to="/messages" @click.native="drawer = false" class="nav-item">
+        <router-link to="/messages"   @click.native="drawer = false" class="nav-item">
           <div class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
           </div>
           <div class="nav-text-container">
             <span class="nav-text">My Messages</span>
@@ -82,7 +74,13 @@
 
         <div class="nav-divider"></div>
 
-        <router-link to="/sign-in" @click.native="drawer = false" class="nav-item">
+        <!-- 抽屜中的 Login 項 -->
+        <router-link
+            v-if="!user"
+            to="/login"
+            @click.native="drawer = false"
+            class="nav-item"
+        >
           <div class="nav-icon">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v12z"/>
@@ -90,31 +88,94 @@
           </div>
           <span class="nav-text">Login</span>
         </router-link>
+
+        <a v-if="user" class="nav-item" href="#" @click.prevent="drawer = false; logout()">
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M16 13v-2H7V8l-5 4 5 4v-3h9zM20 3h-8v2h8v14h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+            </svg>
+          </div>
+          <span class="nav-text">Logout</span>
+        </a>
+
       </nav>
     </el-drawer>
+    <!-- Slide-out menu (Element UI Drawer) -->
   </header>
 </template>
 
 <script>
 import Logo from '@/assets/logo.png'
-
 export default {
   name: 'AppHeader',
   data () {
-    return {
-      drawer: false,
-      logo: Logo,
+    return { drawer: false,logo: Logo, user:null,
       userAvatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiNmM2Y0ZjYiLz4KPGNpcmNsZSBjeD0iMzAiIGN5PSIyMyIgcj0iOCIgZmlsbD0iIzZiNzI4MCIvPgo8cGF0aCBkPSJNMTUgNDVjMC02IDYtMTIgMTUtMTJzMTUgNiAxNSAxMiIgZmlsbD0iIzZiNzI4MCIvPgo8L3N2Zz4K',
       userNickname: 'BAG User',
-      unreadCount: 2
-    }
+      unreadCount: 2}
+  },
+  created() {
+    this.hydrate();
+    if (!this.user) this.fetchMe(); // 可選：用 cookie 拉一次
+
+    // ✅ 同分頁登入後，立刻讓 Header 更新
+    window.addEventListener('bag2bag:user-updated', this.hydrate);
+
+    // ✅ 從 login 頁跳回首頁時也重讀
+    this.$watch('$route', () => this.hydrate());
+  },
+  beforeDestroy() {
+    window.removeEventListener('bag2bag:user-updated', this.hydrate);
   },
   methods: {
+    hydrate() {
+      try {
+        const raw = localStorage.getItem('user');
+        this.user = raw ? JSON.parse(raw) : null;
+        // console.log('header hydrate', this.user)  // 想檢查時打開
+      } catch { this.user = null; }
+    },
+    async fetchMe() {
+      try {
+        // 用你現成的 $api；接口路徑按你 Network 截圖用 /user
+        const res = await this.$api.get('/user', { withCredentials: true });
+        const d = res && res.data ? res.data : res;
+        if (d && d.status_code === 1 && d.data) {
+          localStorage.setItem('user', JSON.stringify(d.data));
+          this.user = d.data;
+        }
+      } catch {}
+    },
+    async logout() {
+      try {
+        // 後端清 cookie（若未實作，可先略過這行）
+        await this.$api.post('/logout', null, { withCredentials: true })
+      } catch (e) { /* 靜默即可 */ }
+
+      // 前端清狀態 + 通知 Header 立即更新
+      localStorage.removeItem('user')
+      window.dispatchEvent(new CustomEvent('bag2bag:user-updated'))
+      this.user = null
+
+      this.$router.push('/index')
+    },
     goToProfile() {
       this.$router.push('/me')
       this.drawer = false
     }
+  },
+  computed: {
+    avatarSrc() { return this.user && this.user.avatar ? this.user.avatar : '' },
+    avatarInitial() {
+      const name = this.user ? (this.user.nickname || this.user.upi || 'U') : 'U';
+      return String(name).charAt(0).toUpperCase();
+    }
+  },
+  onMenu (cmd) {
+    if (cmd === 'profile') return this.goToProfile();
+    if (cmd === 'logout')  return this.logout();
   }
+
 }
 </script>
 

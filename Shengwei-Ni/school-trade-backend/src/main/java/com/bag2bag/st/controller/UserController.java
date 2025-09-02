@@ -5,6 +5,7 @@ import com.bag2bag.st.enums.ErrorMsg;
 import com.bag2bag.st.service.UserService;
 import com.bag2bag.st.service.EmailService;
 import com.bag2bag.st.vo.R;
+import com.bag2bag.st.vo.UserProfileVO;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -108,11 +109,12 @@ public class UserController {
         if (user.getUserStatus() != null && user.getUserStatus().equals((byte) 1)) {
             return R.fail(ErrorMsg.ACCOUNT_Ban);
         }
+
         Cookie cookie = new Cookie("shUserId", String.valueOf(user.getId()));
         cookie.setPath("/");
         cookie.setHttpOnly(false);
         response.addCookie(cookie);
-        return R.success(user);
+        return R.success(UserProfileVO.from(user));
     }
 
     /**
