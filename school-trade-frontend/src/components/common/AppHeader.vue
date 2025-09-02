@@ -22,16 +22,30 @@
         :append-to-body="true"
         custom-class="nav-drawer"
     >
-      <!-- User Profile Section -->
-      <div class="user-section">
-        <div class="user-avatar" @click="goToProfile(); drawer = false">
-          <img :src="userAvatar" alt="User avatar" />
-        </div>
-        <div class="user-info" @click="goToProfile(); drawer = false">
-          <div class="user-name">{{ userNickname }}</div>
-          <div class="user-subtitle">View Profile</div>
+
+      <div class="user" v-if="user">
+        <div class="user-section">
+          <div class="user-info" @click="goToProfile(); drawer = false">
+            <div class="user-name">{{ userNickname }}</div>
+            <div class="user-avatar">
+              <img :src="userAvatar" alt="User avatar" />
+            </div>
+            <div class="user-subtitle">View Profile</div>
+          </div>
         </div>
       </div>
+
+      <div class="user-section" v-else @click="goToLogin(); drawer=false">
+          <div class="user-info" @click="goToLogin(); drawer = false">
+            <div class="user-name">{{ userNickname }}</div>
+            <div class="user-avatar">
+              <img :src="userAvatar" alt="User avatar" />
+            </div>
+            <div class="user-subtitle">View Profile</div>
+          </div>
+        </div>
+
+      <!-- User Profile Section -->
 
       <nav class="drawer-nav">
         <router-link to="/"           @click.native="drawer = false" class="nav-item">
@@ -146,19 +160,27 @@ export default {
         }
       } catch {}
     },
-    async logout() {
+    async logout () {
+      console.log('[logout] clicked')
       try {
-        // 後端清 cookie（若未實作，可先略過這行）
-        await this.$api.post('/logout', null, { withCredentials: true })
-      } catch (e) { /* 靜默即可 */ }
+        await this.$api.post('/logout', {}, { withCredentials: true })
+        console.log('[logout] request finished')
+      } catch (e) {
+        console.error('[logout] api error:', e)
+      }
 
-      // 前端清狀態 + 通知 Header 立即更新
       localStorage.removeItem('user')
       window.dispatchEvent(new CustomEvent('bag2bag:user-updated'))
       this.user = null
-
       this.$router.push('/index')
     },
+
+    goToLogin () {
+      // 直接去登入頁；若想登入後回到當前頁，可加上 redirect 參數
+      // this.$router.push('/login')
+      this.$router.push({ path: '/login', query: { redirect: this.$route.fullPath } })
+    },
+
     goToProfile() {
       this.$router.push('/me')
       this.drawer = false
