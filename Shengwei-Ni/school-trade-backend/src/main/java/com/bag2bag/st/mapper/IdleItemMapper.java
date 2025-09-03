@@ -2,6 +2,7 @@ package com.bag2bag.st.mapper;
 
 import com.bag2bag.st.entity.IdleItem;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -21,7 +22,7 @@ public interface IdleItemMapper {
 
     IdleItem selectByPrimaryKey(Long id);
 
-    List<IdleItem> getAllIdleItem(Long userId);
+    List<IdleItem> getAllIdleItem(@Param("userId") Long userId);
 
     int countIdleItem(String findValue);
 

@@ -2,6 +2,7 @@ package com.bag2bag.st.mapper;
 
 import com.bag2bag.st.entity.Favorite;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public interface FavoriteMapper {
 
     Favorite selectByPrimaryKey(Long id);
 
-    List<Favorite> getMyFavorite(Long userId);
+    List<Favorite> getMyFavorite(@Param("userId")Long userId);
 
     Integer checkFavorite(Long userId, Long idleId);
 

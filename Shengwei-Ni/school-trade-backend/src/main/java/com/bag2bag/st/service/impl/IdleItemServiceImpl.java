@@ -102,5 +102,4 @@ public class IdleItemServiceImpl implements IdleItemService {
         int count = idleItemMapper.countIdleItemByStatus(status);
         return new PageVo<>(list, count);
     }
-
 }

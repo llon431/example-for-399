@@ -11,11 +11,12 @@
     <result column="idle_label" jdbcType="INTEGER" property="idleLabel" />
     <result column="release_time" jdbcType="TIMESTAMP" property="releaseTime" />
     <result column="idle_status" jdbcType="TINYINT" property="idleStatus" />
+    <result column="idle_trade" property="idleTrade" jdbcType="INTEGER"/>
     <result column="user_id" jdbcType="BIGINT" property="userId" />
   </resultMap>
   <sql id="Base_Column_List">
     id, idle_name, idle_details, picture_list, idle_price, idle_place, idle_label, release_time, 
-    idle_status, user_id
+    idle_status, idle_trade, user_id
   </sql>
   <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
     select 

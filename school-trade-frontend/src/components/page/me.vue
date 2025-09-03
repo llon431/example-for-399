@@ -304,6 +304,7 @@ export default {
       handleName: ['Publish', 'Exchange', 'Delete', 'Remove Favorite', '', ''],
       dataList: [[], [], [], [], [], []], // Sell, Exchange, Delisted, Favorites, Sales, Purchases
       orderStatus: ['Pending Payment', 'Pending Shipment', 'Pending Receipt', 'Completed', 'Cancelled'],
+      fallbackImg: 'https://dummyimage.com/600x400/e5e7eb/9ca3af&text=No+Image',
       userInfoDialogVisible: false,
       notUserNicknameEdit: true,
       userPasswordEdit: false,
@@ -337,46 +338,180 @@ export default {
     } else {
       this.userInfo = this.$globalData.userInfo;
     }
-    this.getIdleItemData();
-    this.getMyOrder();
-    this.getMySoldIdle();
-    this.getMyFavorite();
-    this.getSellItems();
-    this.getExchangeItems();
+    this.ensureUser().then(() => {
+      console.log('[created]');
+      this.getSellItems();       // 預設分頁「Want Sell」一定要拉
+      this.getExchangeItems();   // 看需求，也可懶得先拉
+      this.getMyFavorite();
+    });
   },
   methods: {
-    getSellItems() {
-      // 获取用户发布的出售物品 (idle_trade = 1)
-      this.$api.getAllIdleItem().then(res => {
-        if (res.status_code === 1) {
-          this.dataList[0] = [];
-          for (let i = 0; i < res.data.length; i++) {
-            if (res.data[i].idle_trade === 1 && res.data[i].user_id === this.$globalData.userInfo.id) {
-              res.data[i].timeStr = res.data[i].releaseTime.substring(0, 10) + " " + res.data[i].releaseTime.substring(11, 19);
-              let pictureList = JSON.parse(res.data[i].pictureList);
-              res.data[i].imgUrl = pictureList.length > 0 ? pictureList[0] : '';
-              this.dataList[0].push(res.data[i]);
-            }
-          }
-        }
-      })
+
+    async ensureUser() {
+      if (this.$globalData && this.$globalData.userInfo && this.$globalData.userInfo.id) return;
+      const r = await this.$api.getUserInfo();
+      if (r && r.status_code === 1) {
+        this.$globalData.userInfo = r.data;
+      }
     },
-    getExchangeItems() {
-      // 获取用户发布的交换物品 (idle_trade = 2)
-      this.$api.getAllIdleItem().then(res => {
-        if (res.status_code === 1) {
-          this.dataList[1] = [];
-          for (let i = 0; i < res.data.length; i++) {
-            if (res.data[i].idle_trade === 2 && res.data[i].user_id === this.$globalData.userInfo.id) {
-              res.data[i].timeStr = res.data[i].releaseTime.substring(0, 10) + " " + res.data[i].releaseTime.substring(11, 19);
-              let pictureList = JSON.parse(res.data[i].pictureList);
-              res.data[i].imgUrl = pictureList.length > 0 ? pictureList[0] : '';
-              this.dataList[1].push(res.data[i]);
-            }
-          }
-        }
-      })
+
+    safePics(p) {
+      if (Array.isArray(p)) return p;
+      if (!p) return [];
+      try {
+        var v = JSON.parse(p);
+        return Array.isArray(v) ? v : [String(v)];
+      } catch (e) {
+        return [String(p)];
+      }
     },
+
+    pickTime(row) {
+      var t = row.releaseTime || row.release_time || row.createTime || row.create_time || '';
+      return (t || '').slice(0,10) + ' ' + (t || '').slice(11,19);
+    },
+
+
+
+
+
+    async handleClick(tab) {
+      const name = tab.name;     // '1' | '2' | ...
+      this.loading = true;
+      try {
+        if (name === '1') {
+          // Want Sell
+          this.getSellItems();             // 你這個方法已經會先清空 dataList[0]
+        } else if (name === '2') {
+          // Want Exchange
+          this.getExchangeItems();         // 你這個方法已經會先清空 dataList[1]
+        } else if (name === '3') {
+          // My Delisted
+          this.dataList[2] = [];           // 這個方法不會清空，先手動清掉
+          this.getIdleItemData();          // 內部把 idleStatus===2 放到 dataList[2]
+        } else if (name === '4') {
+          // My Favorites
+          this.dataList[3] = [];           // ★ 你的 getMyFavorite 目前不清空，要加這行避免重複
+          this.getMyFavorite();
+        } else if (name === '5') {
+          // My Sales
+          this.dataList[4] = [];           // ★ 同上
+          this.getMySoldIdle();
+        } else if (name === '6') {
+          // My Purchases
+          this.dataList[5] = [];           // ★ 同上
+          this.getMyOrder();
+        }
+      } finally {
+        this.loading = false;
+      }
+    },
+
+
+    // 顯示sell 的内容//
+    async getSellItems() {
+      var uid = this.$globalData && this.$globalData.userInfo && this.$globalData.userInfo.id
+          ? Number(this.$globalData.userInfo.id) : 0;
+      if (!uid) return;
+
+      this.dataList[0] = [];
+
+      const res  = await this.$api.getAllIdleItem();
+      const list = (res && Array.isArray(res.data)) ? res.data : [];
+
+      const rows = list
+          .filter(function(r){
+            var userId = (r.user_id !== undefined && r.user_id !== null) ? r.user_id : r.userId;
+            return Number(userId) === uid;
+          })
+          .map((r) => {
+            var trade = (r.idle_trade !== undefined && r.idle_trade !== null) ? r.idle_trade :
+                (r.idleTrade !== undefined && r.idleTrade !== null) ? r.idleTrade : 1; // 沒傳就當 1
+            var pics  = this.safePics((r.pictureList !== undefined && r.pictureList !== null) ? r.pictureList : r.picture_list);
+
+            var obj = Object.assign({}, r);
+            obj.idleTrade = Number(trade);
+            obj.imgUrl    = pics[0] || '';
+            obj.timeStr   = this.pickTime(r);
+            return obj;
+          })
+          .filter(function(r){ return r.idleTrade === 1; });
+
+      // 用 $set 確保響應
+      this.$set(this.dataList, 0, rows);
+    },
+
+
+    // 顯示exchange 的内容//
+    async getExchangeItems() {
+      var uid = this.$globalData && this.$globalData.userInfo && this.$globalData.userInfo.id
+          ? Number(this.$globalData.userInfo.id) : 0;
+      if (!uid) return;
+
+      this.dataList[1] = [];
+
+      const res  = await this.$api.getAllIdleItem();
+      const list = (res && Array.isArray(res.data)) ? res.data : [];
+
+      const rows = list
+          .filter(function(r){
+            var userId = (r.user_id !== undefined && r.user_id !== null) ? r.user_id : r.userId;
+            return Number(userId) === uid;
+          })
+          .map((r) => {
+            var trade = (r.idle_trade !== undefined && r.idle_trade !== null) ? r.idle_trade :
+                (r.idleTrade !== undefined && r.idleTrade !== null) ? r.idleTrade : 2; // 沒傳就當 2
+            var pics  = this.safePics((r.pictureList !== undefined && r.pictureList !== null) ? r.pictureList : r.picture_list);
+
+            var obj = Object.assign({}, r);
+            obj.idleTrade = Number(trade);
+            obj.imgUrl    = pics[0] || '';
+            obj.timeStr   = this.pickTime(r);
+            return obj;
+          })
+          .filter(function(r){ return r.idleTrade === 2; });
+
+      this.$set(this.dataList, 1, rows);
+    },
+    // 顯示Favorite 的内容//
+    async getMyFavorite(force = false) {
+      console.log('[favorite] enter, force =', force);
+      if (!force && this.dataList[3] && this.dataList[3].length) {
+        console.log('[favorite] use cache:', this.dataList[3].length);
+        return;
+      }
+      console.log('[favorite] calling GET /favorite/my');
+
+      // 確認你的封裝會帶 cookie；若不確定，改用 axios + { withCredentials:true }
+      const res  = await this.$api.getMyFavorite();
+      const list = (res && Array.isArray(res.data)) ? res.data : [];
+
+      const rows = list.map(f => {
+        const item = f.idleItem || f.idle_item || {};
+        const pics = this.safePics(item.pictureList || item.picture_list);
+        const t = f.createTime || f.create_time || item.releaseTime || item.release_time || '';
+        return {
+          favoriteId: f.id || f.favoriteId,
+          id: item.id,
+          imgUrl: pics[0] || '',
+          idleName: item.idleName || item.idle_name,
+          idleDetails: item.idleDetails || item.idle_details,
+          timeStr: (t || '').slice(0,10) + ' ' + (t || '').slice(11,19),
+          idlePrice: item.idlePrice || item.idle_price,
+        };
+      });
+      console.log('[favorite] rows =', rows.length);
+      this.$set(this.dataList, 3, rows);
+    },
+
+
+
+
+
+
+
+
+    //！！！！！還未實現//
     handleSell(item, index) {
       this.$confirm('Confirm to list this item for sale?', 'Confirmation', {
         confirmButtonText: 'Confirm',
@@ -396,24 +531,6 @@ export default {
         // Handle exchange logic here
         this.$message.success('Exchange proposal submitted successfully!');
       });
-    },
-    getMyFavorite(){
-      this.$api.getMyFavorite().then(res=>{
-        if (res.status_code === 1){
-          for (let i = 0; i < res.data.length; i++) {
-            let pictureList = JSON.parse(res.data[i].idleItem.pictureList);
-            this.dataList[3].push({
-              favoriteId:res.data[i].id,
-              id:res.data[i].idleItem.id,
-              imgUrl:pictureList.length > 0 ? pictureList[0] : '',
-              idleName:res.data[i].idleItem.idleName,
-              idleDetails:res.data[i].idleItem.idleDetails,
-              timeStr:res.data[i].createTime.substring(0, 10) + " " + res.data[i].createTime.substring(11, 19),
-              idlePrice:res.data[i].idleItem.idlePrice
-            });
-          }
-        }
-      })
     },
     getMySoldIdle(){
       this.$api.getMySoldIdle().then(res=>{
@@ -465,9 +582,10 @@ export default {
         }
       })
     },
-    handleClick(tab, event) {
-      console.log(this.activeName);
-    },
+
+
+    //主控臺//
+
     saveUserNickname() {
       this.notUserNicknameEdit = true;
       this.$api.updateUserPublicInfo({
@@ -621,8 +739,16 @@ export default {
       }).catch(() => {
         this.$message.error('Avatar update failed!');
       })
-    }
-  }
+    },
+  },
+  computed: {
+    displayedList() {
+      const map = { '1':0,'2':1,'3':2,'4':3,'5':4,'6':5 };
+      const idx = map[this.activeName] != null ? map[this.activeName] : 0;
+      const arr = this.dataList && this.dataList[idx];
+      return Array.isArray(arr) ? arr : [];
+    },
+  },
 }
 </script>
 
@@ -1408,19 +1534,18 @@ export default {
 .items-grid::-webkit-scrollbar-thumb:hover {
   background: rgba(30, 124, 142, 0.8);
 }
-</style>
-font-size: 40px;
-color: white;
-}
 
-.avatar-overlay {
-position: absolute;
-top: 0;
-left: 0;
-right: 0;
-bottom: 0;
-background: rgba(30, 124, 142, 0.9);
-display: flex;
-flex-direction: column;
-align-items: center;
-justify-content: center;
+:root { --nav: #0c1240; --accent: #0c1240; --line: #27a5ff; --muted: #e5e7eb; }
+
+/* Cards (copied from homepage) */
+.cards { display: grid; grid-template-columns: repeat(3, minmax(200px, 1fr)); gap: 24px; padding: 8px 32px 24px; }
+.card { position: relative; background: #fff; border-radius: 14px; border: 6px solid #d6dee5; padding: 10px; height: 220px; cursor: pointer; }
+.cover { width: 100%; height: 120px; border-radius: 8px; background: #f9fafb; }
+.heart { position: absolute; top: 10px; right: 12px; background: #fff; border: 0; font-size: 18px; cursor: pointer; }
+.price { position: absolute; left: 18px; top: 134px; background: #eef0f3; border-radius: 9999px; padding: 4px 10px; font-size: 12px; color: #111827; }
+.name { position: absolute; left: 12px; right: 12px; bottom: 12px; background: var(--nav); color: #fff; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 1024px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .cards { grid-template-columns: 1fr; } }
+
+</style>

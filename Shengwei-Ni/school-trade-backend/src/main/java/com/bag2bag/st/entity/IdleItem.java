@@ -67,5 +67,7 @@ public class IdleItem implements Serializable {
      */
     private Long userId;
 
+    private Integer idleTrade;
+
     private User user;
 }
