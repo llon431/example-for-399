@@ -29,7 +29,18 @@ public class UserServiceImpl implements UserService {
     }
 
     public boolean updateUserInfo(User user) {
-        return userMapper.updateByPrimaryKeySelective(user) == 1;
+        if (user == null || user.getId() == null) return false;
+
+        // 仅允许修改公开资料字段，避免越权更新敏感列
+        User patch = new User();
+        patch.setId(user.getId());
+        patch.setNickname(user.getNickname());
+        patch.setAvatar(user.getAvatar());
+        patch.setCountry(user.getCountry());
+        patch.setMajor(user.getMajor());
+        patch.setDegree(user.getDegree());
+
+        return userMapper.updateByPrimaryKeySelective(patch) > 0;
     }
 
     public boolean updatePassword(String newPassword, String oldPassword, Long id) {

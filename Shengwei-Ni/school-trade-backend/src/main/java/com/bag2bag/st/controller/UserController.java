@@ -167,6 +167,7 @@ public class UserController {
             return R.fail(ErrorMsg.COOKIE_ERROR);
         }
         user.setId(Long.valueOf(id));
+
         if (userService.updateUserInfo(user)) {
             return R.success();
         }

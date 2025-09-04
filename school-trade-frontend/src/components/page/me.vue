@@ -55,7 +55,7 @@
                     <i class="el-icon-location detail-icon"></i>
                     <div>
                       <span class="meta-label">Country</span>
-                      <span class="meta-value">{{userInfo.National || 'Wait To Upload'}}</span>
+                      <span class="meta-value">{{userInfo.country || 'Wait To Upload'}}</span>
                     </div>
                   </div>
 
@@ -113,7 +113,7 @@
 
             <div class="form-item">
               <label>Country</label>
-              <el-input v-model="userInfo.National" placeholder="Please enter your country" maxlength="30"></el-input>
+              <el-input v-model="userInfo.country" placeholder="Please enter your country" maxlength="30"></el-input>
             </div>
 
             <div class="form-item">
@@ -320,7 +320,7 @@ export default {
         nickname: "", // 对应数据库 nickname 字段
         sign_in_time: "", // 对应数据库 sign_in_time 字段
         major: "", // 对应数据库 major 字段
-        National: "", // 对应数据库 National 字段（注意大写N）
+        country: "", // 对应数据库 National 字段（注意大写N）
         degree: "", // 对应数据库 degree 字段
         rating: "5.0" // 对应数据库 rating 字段
       }
@@ -615,7 +615,7 @@ export default {
         nickname: this.userInfo.nickname.trim(),
         major: this.userInfo.major.trim(),
         degree: this.userInfo.degree,
-        National: this.userInfo.National.trim() // 注意大写N，匹配数据库字段名
+        country: this.userInfo.country.trim() // 注意大写N，匹配数据库字段名
       }).then(res => {
         if (res.status_code === 1) {
           // 更新全局用户信息
@@ -624,7 +624,7 @@ export default {
             nickname: this.userInfo.nickname,
             major: this.userInfo.major,
             degree: this.userInfo.degree,
-            National: this.userInfo.National // 注意大写N，匹配数据库字段名
+            country: this.userInfo.country // 注意大写N，匹配数据库字段名
           };
           this.$message.success('Information saved successfully!');
           this.userInfoDialogVisible = false;

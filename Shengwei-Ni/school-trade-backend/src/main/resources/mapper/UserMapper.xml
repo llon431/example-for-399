@@ -13,11 +13,14 @@
     <result column="avatar" jdbcType="VARCHAR" property="avatar"/>
     <result column="sign_in_time" jdbcType="TIMESTAMP" property="signInTime"/>
     <result column="user_status" jdbcType="TINYINT" property="userStatus"/>
+    <result column="National" jdbcType="VARCHAR" property="country"/>
+    <result column="major"   jdbcType="VARCHAR" property="major"/>
+    <result column="degree"  jdbcType="VARCHAR" property="degree"/>
   </resultMap>
 
   <!-- 常用欄位清單：補上 Email_number / UPI -->
   <sql id="Base_Column_List">
-    id, account_number, `Email_number`, `UPI`, nickname, avatar, sign_in_time, user_status
+    id, account_number, `Email_number`, `UPI`, nickname, avatar, sign_in_time, user_status, `National`, major, `degree`
   </sql>
 
   <!-- 登入（保留原本條件；回傳欄位改成統一片段） -->
@@ -88,15 +91,19 @@
   <insert id="insert" keyColumn="id" keyProperty="id"
           parameterType="com.bag2bag.st.entity.User" useGeneratedKeys="true">
     insert into sh_user (
-      account_number, `Email_number`, `UPI`, user_password, nickname, avatar, sign_in_time
+      account_number, `Email_number`, `UPI`, user_password, nickname, avatar, sign_in_time,
+      `National`, major, `degree`
     ) values (
-               #{accountNumber,jdbcType=VARCHAR},
-               #{emailNumber,jdbcType=VARCHAR},
-               #{UPI,jdbcType=VARCHAR},
-               #{userPassword,jdbcType=VARCHAR},
-               #{nickname,jdbcType=VARCHAR},
-               #{avatar,jdbcType=VARCHAR},
-               #{signInTime,jdbcType=TIMESTAMP}
+                   #{accountNumber,jdbcType=VARCHAR},
+                   #{emailNumber,jdbcType=VARCHAR},
+                   #{UPI,jdbcType=VARCHAR},
+                   #{userPassword,jdbcType=VARCHAR},
+                   #{nickname,jdbcType=VARCHAR},
+                   #{avatar,jdbcType=VARCHAR},
+                   #{signInTime,jdbcType=TIMESTAMP},
+                   #{country,jdbcType=VARCHAR},
+                   #{major,jdbcType=VARCHAR},
+                   #{degree,jdbcType=VARCHAR}
              )
   </insert>
 
@@ -112,6 +119,9 @@
       <if test="nickname != null">nickname,</if>
       <if test="avatar != null">avatar,</if>
       <if test="signInTime != null">sign_in_time,</if>
+      <if test="country != null">`National`,</if>
+      <if test="major != null">major,</if>
+      <if test="degree != null">`degree`,</if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="accountNumber != null">#{accountNumber,jdbcType=VARCHAR},</if>
@@ -121,6 +131,9 @@
       <if test="nickname != null">#{nickname,jdbcType=VARCHAR},</if>
       <if test="avatar != null">#{avatar,jdbcType=VARCHAR},</if>
       <if test="signInTime != null">#{signInTime,jdbcType=TIMESTAMP},</if>
+      <if test="country != null">#{country,jdbcType=VARCHAR},</if>
+      <if test="major != null">#{major,jdbcType=VARCHAR},</if>
+      <if test="degree != null">#{degree,jdbcType=VARCHAR},</if>
     </trim>
   </insert>
 
@@ -135,6 +148,9 @@
       <if test="avatar != null">avatar = #{avatar,jdbcType=VARCHAR},</if>
       <if test="signInTime != null">sign_in_time = #{signInTime,jdbcType=TIMESTAMP},</if>
       <if test="userStatus != null">user_status = #{userStatus},</if>
+      <if test="country != null">`National` = #{country,jdbcType=VARCHAR},</if>
+      <if test="major != null">major = #{major,jdbcType=VARCHAR},</if>
+      <if test="degree != null">`degree` = #{degree,jdbcType=VARCHAR},</if>
     </set>
     where id = #{id,jdbcType=BIGINT}
   </update>
@@ -147,7 +163,10 @@
         user_password = #{userPassword,jdbcType=VARCHAR},
         nickname = #{nickname,jdbcType=VARCHAR},
         avatar = #{avatar,jdbcType=VARCHAR},
-        sign_in_time = #{signInTime,jdbcType=TIMESTAMP}
+        sign_in_time = #{signInTime,jdbcType=TIMESTAMP},
+        `National` = #{country,jdbcType=VARCHAR},
+        major = #{major,jdbcType=VARCHAR},
+        `degree` = #{degree,jdbcType=VARCHAR}
     where id = #{id,jdbcType=BIGINT}
   </update>
 

@@ -60,7 +60,7 @@ public class User implements Serializable {
     /**
      * 国家
      */
-    private String National;
+    private String country;
 
     /**
      * 学位

@@ -139,12 +139,12 @@
             <template v-else-if="form.idle_trade === 2">
               <div class="form-group">
                 <label class="form-label">
-                  <span class="label-text">Estimated Value</span>
+                  <span class="label-text">Original Price</span>
                 </label>
                 <div class="input-with-prefix">
                   <span class="prefix">$</span>
                   <input
-                      v-model="form.idle_price"
+                      v-model="form.idle_original_price"
                       type="number"
                       class="form-input with-prefix"
                       placeholder="0.00"
@@ -271,16 +271,13 @@ export default {
           this.form.idle_name &&
           this.form.idle_details &&
           this.form.idle_label &&
-          this.form.idle_new;
+          this.form.idle_new &&
+          this.form.idle_original_price;   // ★ 兩種交易都要 original price
 
       if (this.form.idle_trade === 1) {
-        return (
-            baseValid &&
-            this.form.idle_price &&
-            this.form.idle_original_price
-        );
+        return baseValid && this.form.idle_price;        // Sell 多驗 current price
       } else {
-        return baseValid && this.form.exchange_wants;
+        return baseValid && this.form.exchange_wants;     // Exchange 多驗想交換內容
       }
     }
   },
@@ -400,7 +397,7 @@ export default {
           pictureList: JSON.stringify(imageUrls),
 
           idlePrice: this.form.idle_trade === 1 ? Number(this.form.idle_price) : null,
-          idleOriginalPrice: this.form.idle_trade === 1 ? Number(this.form.idle_original_price) : null,
+          idleOriginalPrice: Number(this.form.idle_original_price),
 
           // ★ 關鍵：把 'tech' 轉成整數 ID
           idleLabel: LABEL_MAP[this.form.idle_label] || null,
