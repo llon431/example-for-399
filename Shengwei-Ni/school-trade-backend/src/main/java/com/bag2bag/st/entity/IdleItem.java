@@ -70,4 +70,8 @@ public class IdleItem implements Serializable {
     private Integer idleTrade;
 
     private User user;
+
+    private Integer idleNew;
+
+    private BigDecimal idleOriginalPrice;
 }

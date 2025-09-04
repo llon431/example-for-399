@@ -214,122 +214,219 @@
             </div>
           </div>
 
+
           <!-- Action Buttons -->
           <div class="action-buttons">
-            <button @click="goBack" class="btn btn-secondary">
-              ← Back
-            </button>
-            <button @click="submitForm" class="btn btn-primary" :disabled="!isFormValid">
-              <span class="btn-text">{{ form.idle_trade === 1 ? 'List for Sale' : 'List for Exchange' }}</span>
-              <span class="btn-icon">{{ form.idle_trade === 1 ? '💰' : '🔄' }}</span>
-            </button>
+            <button @click="goBack" class="btn btn-secondary">← Back</button>
+
+            <!-- 一定是 button，避免觸發原生 submit -->
+            <el-button
+                type="primary"
+                native-type="button"
+                :loading="uploading || submitting"
+                :disabled="uploading || submitting"
+                @click="submitForm"
+            >
+              List for Sale
+            </el-button>
           </div>
         </div>
       </main>
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from "vue";
-import AppHeader from '../common/AppHeader.vue';
+<script>
 
-const form = ref({
-  idle_name: "",
-  idle_details: "",
-  picture_list: [], // Array of image files
-  idle_price: "",
-  idle_original_price: "",
-  idle_label: "", // Now uses code instead of numeric ID
-  idle_trade: 1, // 1=sell, 2=exchange
-  idle_new: "", // 1=brand new, 2=like new, 3=used
-  exchange_wants: "" // Description of wanted items for exchange
-});
+const LABEL_MAP = {
+  tech: 1,
+  fashion: 2,
+  book: 3,
+  home: 4,
+  other: 99,
+};
 
-const imagePreview = ref([]);
+export default {
+  data() {
+    return {
+      form: {
+        idle_name: '',
+        idle_details: '',
+        picture_list: [],              // Array<File>
+        idle_price: '',
+        idle_original_price: '',
+        idle_label: '',                // code string
+        idle_trade: 1,                 // 1=sell, 2=exchange
+        idle_new: '',                  // 1/2/3
+        exchange_wants: ''             // for exchange
+      },
+      imagePreview: [],                 // dataURL array
+      uploading: false,
+      submitting: false,
+    };
+  },
+  computed: {
+    isFormValid() {
+      const baseValid =
+          this.form.idle_name &&
+          this.form.idle_details &&
+          this.form.idle_label &&
+          this.form.idle_new;
 
-const isFormValid = computed(() => {
-  const baseValid = form.value.idle_name &&
-      form.value.idle_details &&
-      form.value.idle_label &&
-      form.value.idle_new;
+      if (this.form.idle_trade === 1) {
+        return (
+            baseValid &&
+            this.form.idle_price &&
+            this.form.idle_original_price
+        );
+      } else {
+        return baseValid && this.form.exchange_wants;
+      }
+    }
+  },
+  methods: {
 
-  if (form.value.idle_trade === 1) {
-    return baseValid && form.value.idle_price && form.value.idle_original_price;
-  } else {
-    return baseValid && form.value.exchange_wants;
-  }
-});
+    toast(type, msg) {
+      if (this.$message && this.$message[type]) this.$message[type](msg);
+      else alert(msg);
+    },
 
-const onFileChange = (e) => {
-  const files = Array.from(e.target.files);
+    //網頁前端的功能e.g上傳刪除圖片，sell exchange 的點擊
+    onFileChange(e) {
+      const files = Array.from(e.target.files || []);
 
-  files.forEach(file => {
-    if (form.value.picture_list.length >= 9) {
-      alert('Maximum 9 images allowed');
-      return;
+      files.forEach((file) => {
+        if (this.form.picture_list.length >= 9) {
+          alert('Maximum 9 images allowed');
+          return;
+        }
+
+        this.form.picture_list.push(file);
+
+        // local preview
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          this.imagePreview.push(ev.target.result);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // 可選：為了能再次選同一檔名
+      e.target.value = '';
+    },
+
+    removeImage(index) {
+      this.form.picture_list.splice(index, 1);
+      this.imagePreview.splice(index, 1);
+    },
+
+    goBack() {
+      window.history.back();
+    },
+
+    async uploadOneImage(file) {
+      var fd = new FormData();
+      fd.append('file', file);                   // 後端要求字段名：file
+
+      var data = await this.$api.uploadFile(fd); // 方案A：已解包成 data
+
+      if (!data || data.status_code !== 1) {
+        throw new Error((data && data.msg) ? data.msg : '圖片上傳失敗');
+      }
+
+      // 後端可能回字串或 { url: '...' }
+      var url = '';
+      if (data) {
+        if (typeof data.data === 'string') {
+          url = data.data;
+        } else if (data.data && typeof data.data === 'object' && data.data.url) {
+          url = data.data.url;
+        }
+      }
+
+      if (!url) {
+        throw new Error('上傳結果無效');
+      }
+      return url;                                // 後端回的完整圖片 URL
+    },
+
+
+
+    async uploadAllImages() {
+      var files = this.form.picture_list;
+      if (!files.length) return [];
+      var urls = [];
+      for (var i = 0; i < files.length; i++) {
+        var u = await this.uploadOneImage(files[i]);
+        urls.push(u);
+      }
+      return urls;
+    },
+
+    buildFormData(payload) {
+      var fd = new FormData();
+      Object.keys(payload).forEach(function (k) {
+        var v = payload[k];
+        if (v === undefined || v === null) v = '';
+        // 陣列或物件一律轉成 JSON 字串（例如 pictureList）
+        if (Array.isArray(v) || (typeof v === 'object' && v !== null)) {
+          fd.append(k, JSON.stringify(v));
+        } else {
+          fd.append(k, v);
+        }
+      });
+      return fd;
+    },
+
+
+    async submitForm () {
+      console.log('[submit] click');
+
+      if (!this.isFormValid) { this.toast('error','請填完必填欄位'); return; }
+      if (!this.form.picture_list || !this.form.picture_list.length) {
+        this.toast('error','請先選擇至少一張圖片'); return;
+      }
+
+      try {
+        // 1) 先上傳圖片得到 URL 陣列
+        const imageUrls = await this.uploadAllImages();
+
+        // 2) 組成「和 Java 欄位一致」的 JSON
+        const payload = {
+          idleName: (this.form.idle_name || '').trim(),
+          idleDetails: (this.form.idle_details || '').trim(),
+
+          // pictureList：如果後端是 String，就用 JSON 字串；如果是 List<String> 就直接用陣列
+          pictureList: JSON.stringify(imageUrls),
+
+          idlePrice: this.form.idle_trade === 1 ? Number(this.form.idle_price) : null,
+          idleOriginalPrice: this.form.idle_trade === 1 ? Number(this.form.idle_original_price) : null,
+
+          // ★ 關鍵：把 'tech' 轉成整數 ID
+          idleLabel: LABEL_MAP[this.form.idle_label] || null,
+
+          idleTrade: Number(this.form.idle_trade),
+          idleNew: Number(this.form.idle_new),
+          exchangeWants: this.form.idle_trade === 2 ? (this.form.exchange_wants || '').trim() : null,
+        };
+
+        // 3) 用 JSON 送（保持你原本的 $api.addIdleItem）
+        const data = await this.$api.addIdleItem(payload);  // request.js 會自動 Content-Type: application/json
+
+        if (data && data.status_code === 1) {
+          this.toast('success', this.form.idle_trade === 1 ? '發布成功（出售）' : '發布成功（交換）');
+          this.$router && this.$router.push && this.$router.push('/');
+        } else {
+          this.toast('error', (data && data.msg) ? data.msg : '發布失敗');
+        }
+      } catch (e) {
+        console.error(e);
+        this.toast('error', e && e.message ? e.message : '提交失敗');
+      }
     }
 
-    form.value.picture_list.push(file);
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      imagePreview.value.push(e.target.result);
-    };
-    reader.readAsDataURL(file);
-  });
-};
-
-const removeImage = (index) => {
-  form.value.picture_list.splice(index, 1);
-  imagePreview.value.splice(index, 1);
-};
-
-const goBack = () => {
-  // Adjust according to your routing configuration
-  window.history.back();
-};
-
-const submitForm = () => {
-  if (!isFormValid.value) {
-    alert("Please fill in all required fields");
-    return;
   }
+}
 
-  // Build submit data that matches database structure
-  const submitData = {
-    idle_name: form.value.idle_name,
-    idle_details: form.value.idle_details,
-    picture_list: JSON.stringify(form.value.picture_list.map((file, index) => `image_${Date.now()}_${index}.${file.name.split('.').pop()}`)),
-    idle_price: parseFloat(form.value.idle_price) || 0,
-    idle_original_price: parseFloat(form.value.idle_original_price) || 0,
-    idle_label: form.value.idle_label, // Now uses code string instead of numeric ID
-    release_time: new Date().toISOString().slice(0, 19).replace('T', ' '), // MySQL DATETIME format
-    idle_status: 1, // 1=published
-    idle_trade: form.value.idle_trade,
-    idle_new: parseInt(form.value.idle_new),
-    user_id: 1, // Should get actual user ID from user state
-    exchange_wants: form.value.exchange_wants // Added exchange wants field
-  };
-
-  console.log("Submit data:", submitData);
-
-  // Call your API here
-  // this.$api.addIdleItem(submitData).then(res => {
-  //   if (res.status_code === 1) {
-  //     alert(form.value.idle_trade === 1 ? 'Item listed for sale successfully!' : 'Item listed for exchange successfully!');
-  //     // Navigate to details page
-  //     this.$router.push({path: '/details', query: {id: res.data.id}});
-  //   } else {
-  //     alert('Listing failed: ' + res.msg);
-  //   }
-  // }).catch(e => {
-  //   alert('Listing failed, please check your network connection!');
-  // });
-
-  const action = form.value.idle_trade === 1 ? 'sale' : 'exchange';
-  alert(`Item listed for ${action} successfully! 🎉`);
-};
 </script>
 
 <style scoped>

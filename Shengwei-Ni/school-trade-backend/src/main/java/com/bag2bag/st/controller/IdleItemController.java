@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.util.Date;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 闲置商品 控制层
@@ -18,6 +19,7 @@ import java.util.Date;
 @CrossOrigin
 @RestController
 @RequestMapping("idle")
+@Slf4j
 public class IdleItemController {
 
     @Resource
@@ -35,6 +37,15 @@ public class IdleItemController {
             @CookieValue(value = "shUserId", defaultValue = "") String shUserId,
             @RequestBody IdleItem idleItem
     ) {
+        log.info("shUserId={}, idleItem={}", shUserId, idleItem);
+        log.info("fields: name={}, label={}, trade={}, new={}, pictureList(class)={}, pictureList={}",
+                idleItem != null ? idleItem.getIdleName() : null,
+                idleItem != null ? idleItem.getIdleLabel() : null,
+                idleItem != null ? idleItem.getIdleTrade() : null,
+                idleItem != null ? idleItem.getIdleNew() : null,
+                (idleItem != null && idleItem.getPictureList() != null)
+                        ? idleItem.getPictureList().getClass().getName() : null,
+                idleItem != null ? idleItem.getPictureList() : null);
         if (shUserId.isEmpty()) {
             return R.fail(ErrorMsg.COOKIE_ERROR);
         }

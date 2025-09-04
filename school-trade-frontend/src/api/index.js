@@ -85,6 +85,12 @@ const api = {
             data: data
         });
     },
+
+    uploadFile(formData) {
+        // 不要手動設 Content-Type，讓瀏覽器自動帶 boundary
+        return request.post('/file', formData);
+    },
+
     getIdleItem(query) {
         return request({
             url: '/idle/info',
