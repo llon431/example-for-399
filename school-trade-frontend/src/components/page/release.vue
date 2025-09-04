@@ -238,11 +238,12 @@
 <script>
 
 const LABEL_MAP = {
-  tech: 1,
-  fashion: 2,
-  book: 3,
-  home: 4,
-  other: 99,
+  univ:1,
+  tech: 2,
+  clothes: 3,
+  sports: 4,
+  living: 5,
+  other: 6,
 };
 
 export default {
