@@ -5,9 +5,9 @@ const originalReplace = Router.prototype.replace;
 Router.prototype.replace = function replace(location) {
     return originalReplace.call(this, location).catch(err => err);
 };
-const originalPush = Router.prototype.push
+const originalPush = Router.prototype.push;
 Router.prototype.push = function push(location) {
-    return originalPush.call(this, location).catch(err => err)
+    return originalPush.call(this, location).catch(err => err);
 };
 
 Vue.use(Router);
@@ -73,9 +73,16 @@ export default new Router({
             component: () => import('../components/page/platform-admin.vue'),
             meta: { title: '后台管理' }
         },
+        // 新增 About Us 页面
+        {
+            path: '/about',
+            component: () => import('../components/page/aboutus.vue'),
+            meta: { title: 'About Us | 二手物品交易平台' }
+        },
         {
             path: '*',
             redirect: '/'
         }
     ]
 });
+

@@ -9,6 +9,14 @@
 
       <!-- Right: actions -->
       <div class="actions">
+        <!-- Post Item 按钮移到这里 -->
+        <router-link to="/release" class="post-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+          </svg>
+          Post Item
+        </router-link>
+
         <el-button class="menu-btn" icon="el-icon-menu" circle @click="drawer = true" />
       </div>
     </div>
@@ -44,33 +52,6 @@
           <span class="nav-text">Home</span>
         </router-link>
 
-        <router-link to="/categories" exact class="nav-item" @click.native="drawer = false">
-          <div class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/>
-            </svg>
-          </div>
-          <span class="nav-text">Categories</span>
-        </router-link>
-
-        <router-link to="/release" exact class="nav-item" @click.native="drawer = false">
-          <div class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-            </svg>
-          </div>
-          <span class="nav-text">Post Item</span>
-        </router-link>
-
-        <router-link to="/favorites" exact class="nav-item" @click.native="drawer = false">
-          <div class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="m12 21.35-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
-          </div>
-          <span class="nav-text">My Favorites</span>
-        </router-link>
-
         <router-link to="/messages" exact class="nav-item" @click.native="drawer = false">
           <div class="nav-icon">
             <svg viewBox="0 0 24 24" fill="currentColor">
@@ -81,6 +62,15 @@
             <span class="nav-text">My Messages</span>
             <span class="message-badge" v-if="unreadCount > 0">{{ unreadCount }}</span>
           </div>
+        </router-link>
+
+        <router-link to="/about" exact class="nav-item" @click.native="drawer = false">
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+            </svg>
+          </div>
+          <span class="nav-text">About Us</span>
         </router-link>
 
         <div class="nav-divider"></div>
@@ -221,7 +211,35 @@ export default {
   justify-self: end;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+
+/* Post Item 按钮样式 */
+.post-btn {
+  color: #fff;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: rgba(59, 167, 255, 0.1);
+  background: #0c1240;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.post-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.post-btn:hover {
+  background: var(--line);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 167, 255, 0.3);
 }
 
 .login {
@@ -237,14 +255,14 @@ export default {
 .menu-btn {
   border: 0;
   background: transparent;
-  color: #cbd5e1;
+  color: #fff;
   font-size: 22px;
   cursor: pointer;
   padding: 6px 10px;
   border-radius: 10px;
 }
 
-.menu-btn:hover { background: rgba(255,255,255,.1); }
+.menu-btn:hover { background: var(--line); }
 
 /* Drawer Styles */
 .nav-drawer >>> .el-drawer__body {
@@ -449,6 +467,17 @@ export default {
 @media (max-width: 640px) {
   .bar { height: 74px; }
   .brand { font-size: 22px; }
+
+  .post-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .post-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
   .user-section {
     padding: 22px 18px;
   }
