@@ -33,6 +33,7 @@
 
         <!-- You May Like -->
         <h3 class="section-title">You May Like</h3>
+
         <section class="cards">
           <article
               v-for="(idle, index) in idleList"
@@ -40,11 +41,22 @@
               class="card"
               @click="toDetails(idle)"
           >
-            <button class="heart" @click.stop="toggleWishlist(idle)" aria-label="wishlist">♡</button>
-
             <el-image class="cover" :src="idle.imgUrl" fit="cover">
-              <div slot="error" class="image-slot"><i class="el-icon-picture-outline">无图</i></div>
+              <template #error>
+                <div class="image-slot"><i class="el-icon-picture-outline"></i>无图</div>
+              </template>
             </el-image>
+
+            <!-- 心形按钮：放在图片后、z-index 更高 -->
+            <button
+                class="heart"
+                :class="{ 'is-liked': isLiked(idle) }"
+                @click.stop="toggleWishlist(idle)"
+                :aria-pressed="isLiked(idle)"
+                aria-label="wishlist"
+            >
+              {{ isLiked(idle) ? '♥' : '♡' }}
+            </button>
 
             <div class="price">NZ$ {{ formatPrice(idle.idlePrice) }}</div>
             <div class="name">{{ idle.idleName || 'Item name' }}</div>
@@ -59,6 +71,7 @@
               layout="prev, pager, next, jumper"
               :current-page.sync="currentPage"
               :total="totalItem"
+              :title="isAuthed() ? '' : '請先登入'"
               @current-change="handleCurrentChange"
           />
         </div>
@@ -90,6 +103,8 @@ export default {
       currentPage: 1,
       totalItem: 0,
       keyword: '',
+      likedMap: {},
+      favIdByIdle: {},
       // 依你的實際路徑/代碼調整 value
       cats: [
         { key: 'univ',    label: 'University', value: '1', img: IUniv },
@@ -110,6 +125,10 @@ export default {
       this.syncFromRoute()
       this.findIdleTiem(this.currentPage)
     }
+  },
+  async mounted() {
+    // 进页面先拉我的喜欢列表，构建 likedMap
+    await this.initFavorites();
   },
   methods: {
     onSearch () {
@@ -178,12 +197,159 @@ export default {
     toDetails (idle) {
       this.$router.push({ path: '/details', query: { id: idle.id } })
     },
-    toggleWishlist (idle) {
-      // 這裡先做占位，避免點到卡片
-      console.log('toggle wishlist', idle && idle.id)
+
+    async initFavorites() {
+      try {
+        const res = await this.$api.getMyFavorite({});
+        var list;
+        if (res && res.data && res.data.data) list = res.data.data;
+        else if (res && res.data) list = res.data;
+        else list = res || [];
+
+        var liked = {};
+        var mapFav = {};
+        list.forEach(function (it) {
+          // Favorite 記錄本身的主鍵
+          var favoriteId = it && it.id;
+          // 這條收藏對應的商品 id
+          var idleId = it ? (it.idleId != null ? it.idleId : it.id) : null;
+          if (idleId != null) {
+            liked[idleId] = true;
+            if (favoriteId != null) mapFav[idleId] = favoriteId;
+          }
+        });
+
+        this.likedMap = liked;
+        this.favIdByIdle = mapFav;
+      } catch (e) {
+        // 未登入也可能進來，這裡不用彈錯
+        console.error(e);
+      }
+    },
+
+    isLiked(idle) {
+      var id = (idle && (idle.id != null ? idle.id : idle.idleId));
+      return !!(this.likedMap && this.likedMap[id]);
+    },
+
+    isAuthed() {
+      // 讀 localStorage['user']，解析是否存在
+      try {
+        var raw = localStorage.getItem('user');
+        if (!raw) return false;
+        var obj = JSON.parse(raw);
+        return !!obj;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    _getCode(res) {
+      if (!res) return 0;
+
+      // 1) 已解包：{status_code, code, message/msg, data...}
+      if (typeof res.status_code !== 'undefined') return res.status_code;
+      if (typeof res.code !== 'undefined') return res.code;
+
+      // 2) Axios 樣式：{ data: {...}, status }
+      if (res.data) {
+        if (typeof res.data.status_code !== 'undefined') return res.data.status_code;
+        if (typeof res.data.code !== 'undefined') return res.data.code;
+      }
+      if (typeof res.status !== 'undefined') return res.status;
+
+      return 0;
+    },
+    _getMsg(res, fallback) {
+      if (!res) return fallback || '';
+      if (res.message) return res.message;
+      if (res.msg) return res.msg;
+      if (res.data && (res.data.message || res.data.msg)) return res.data.message || res.data.msg;
+      return fallback || '';
+    },
+
+    async toggleWishlist(idle) {
+      // 0) 取 id
+      var idleId = (idle && idle.id != null) ? idle.id : (idle && idle.idleId != null ? idle.idleId : null);
+      if (idleId == null) {
+        this.$message && this.$message.warning && this.$message.warning('物品資料缺少 id，無法收藏');
+        return;
+      }
+
+      // 1) 登入檢查
+      if (!this.isAuthed || !this.isAuthed()) {
+        if (this.$message && this.$message.warning) this.$message.warning('請先登入'); else alert('請先登入');
+        var back = (this.$route && this.$route.fullPath) ? this.$route.fullPath : '/';
+        this.$router && this.$router.push && this.$router.push({ path: '/login', query: { redirect: back }});
+        return;
+      }
+
+      // 2) 狀態/回滾快照
+      var wasLiked = !!(this.likedMap && this.likedMap[idleId]);
+      var prevLiked  = this.likedMap    ? Object.assign({}, this.likedMap)    : {};
+      var prevFavMap = this.favIdByIdle ? Object.assign({}, this.favIdByIdle) : {};
+
+      try {
+        if (wasLiked) {
+          // —— 取消喜歡 ——
+          var favoriteId = this.favIdByIdle ? this.favIdByIdle[idleId] : null;
+          if (favoriteId == null && typeof this.initFavorites === 'function') {
+            await this.initFavorites();
+            favoriteId = this.favIdByIdle ? this.favIdByIdle[idleId] : null;
+          }
+          if (favoriteId == null) throw new Error('未找到對應的收藏記錄');
+
+          // 樂觀更新
+          var next = Object.assign({}, this.likedMap || {}); delete next[idleId]; this.likedMap = next;
+          var nextFav = Object.assign({}, this.favIdByIdle || {}); delete nextFav[idleId]; this.favIdByIdle = nextFav;
+
+          if (!this.$api || typeof this.$api.deleteFavorite !== 'function') throw new Error('接口未註冊：deleteFavorite');
+          var res = await this.$api.deleteFavorite({ id: favoriteId });
+
+          var code = this._getCode(res);
+          if (!(code === 1 || code === 200 || code === 204)) {
+            throw new Error(this._getMsg(res, '刪除失敗'));
+          }
+          this.$message && this.$message.success && this.$message.success('已從喜歡移除');
+
+        } else {
+          // —— 加入喜歡 ——
+          var liked2 = Object.assign({}, this.likedMap || {}); liked2[idleId] = true; this.likedMap = liked2;
+
+          if (!this.$api || typeof this.$api.addFavorite !== 'function') throw new Error('接口未註冊：addFavorite');
+          var res2 = await this.$api.addFavorite({ idleId: idleId });
+
+          var code2 = this._getCode(res2);
+          // 成功容忍 1 / 200 / 201
+          if (!(code2 === 1 || code2 === 200 || code2 === 201)) {
+            throw new Error(this._getMsg(res2, '添加失敗'));
+          }
+
+          if (typeof this.initFavorites === 'function') await this.initFavorites();
+          this.$message && this.$message.success && this.$message.success('已加入喜歡');
+        }
+      } catch (e) {
+        // 回滾
+        this.likedMap = prevLiked;
+        this.favIdByIdle = prevFavMap;
+
+        var status = e && e.response ? e.response.status : 0;
+        var msg = this._getMsg(e && e.response && e.response.data ? e.response.data : e, e && e.message);
+
+        if (status === 401 || /未登錄|未登录|請先登入|請先登录|not\s*login/i.test(msg || '')) {
+          var back2 = (this.$route && this.$route.fullPath) ? this.$route.fullPath : '/';
+          this.$router && this.$router.push && this.$router.push({ path: '/login', query: { redirect: back2 }});
+          return;
+        }
+
+        this.$message && this.$message.error ? this.$message.error(msg || '操作失敗，請稍後再試') : alert(msg || '操作失敗，請稍後再試');
+        console.error(e);
+      }
     }
+
   }
 }
+
 </script>
 
 <style scoped>
@@ -236,5 +402,29 @@ export default {
 @media (max-width: 640px) {
   .cats { grid-template-columns: repeat(2, 1fr); }
   .cards { grid-template-columns: 1fr; }
+}
+
+.card {
+  position: relative;
+}
+
+.heart {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  font-size: 18px;
+  line-height: 32px;
+  cursor: pointer;
+  transition: transform .12s ease;
+}
+.heart:hover { transform: scale(1.06); }
+.heart.is-liked {
+  color: #e0245e;     /* 高亮颜色 */
+  background: #fff;   /* 你也可以改成半透明 */
 }
 </style>

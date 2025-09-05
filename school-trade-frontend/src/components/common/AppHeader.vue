@@ -100,7 +100,15 @@
           <span class="nav-text">Login</span>
         </router-link>
 
-        <a v-if="user" href="#" class="nav-item" @click.prevent="drawer=false; logout()">
+        <a
+            v-if="user"
+            href="#"
+            class="nav-item"
+            :class="{ 'is-disabled': loggingOut }"
+            :aria-busy="loggingOut"
+            :aria-disabled="loggingOut"
+            @click.prevent="onLogout"
+        >
           <div class="nav-icon">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M16 13v-2H7V8l-5 4 5 4v-3h9zM20 3h-8v2h8v14h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
@@ -121,6 +129,7 @@ export default {
   data () {
     return {
       drawer: false,
+      loggingOut: false,
       logo: Logo,
       user: null,
       defaultAvatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiNmM2Y0ZjYiLz4KPGNpcmNsZSBjeD0iMzAiIGN5PSIyMyIgcj0iOCIgZmlsbD0iIzZiNzI4MCIvPgo8cGF0aCBkPSJNMTUgNDVjMC02IDYtMTIgMTUtMTJzMTUgNiAxNSAxMiIgZmlsbD0iIzZiNzI4MCIvPgo8L3N2Zz4K',
@@ -156,14 +165,58 @@ export default {
         }
       } catch {}
     },
-    async logout () {
+    async onLogout() {
+      if (this.loggingOut) return;
+      this.loggingOut = true;
+
       try {
-        await this.$api.post('/logout', {}, { withCredentials: true })
-      } catch (e) { console.error(e) }
-      localStorage.removeItem('user')
-      window.dispatchEvent(new CustomEvent('bag2bag:user-updated'))
-      this.user = null
-      this.$router.push('/index')
+        // 1) 调后端注销（Session/Cookie 场景需确保 axios 开了 withCredentials）
+        if (this.$api && this.$api.logout) {
+          await this.$api.logout({});
+        }
+      } catch (e) {
+        // 后端没开 /logout 或跨域失败也不阻塞前端清理
+        console.error('logout api error:', e);
+      }
+
+      try {
+        // 2) 清本地登录态
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
+        localStorage.removeItem('userInfo');
+        // 若你用自定义标记：
+        localStorage.setItem('loginStatus', '0');
+      } catch (e) {}
+
+      // 3) 清全局/本地用户状态（按你项目二选一）
+      if (this.$store && this.$store.commit) {
+      } else if (typeof this.user !== 'undefined') {
+        this.user = null; // 你模板里 v-if="user" 会立刻隐藏
+      }
+
+      // 4) 若你用 Authorization 头，顺手清掉
+      if (this.$axios && this.$axios.defaults && this.$axios.defaults.headers && this.$axios.defaults.headers.common) {
+        delete this.$axios.defaults.headers.common['Authorization'];
+      }
+
+      // 5) 通知其他页面清状态（比如清喜欢列表）
+      window.dispatchEvent(new Event('app-logged-out'));
+
+      // 6) 关闭抽屉并跳到登录页（带回跳）
+      this.drawer = false;
+      var back = (this.$route && this.$route.fullPath) ? this.$route.fullPath : '/';
+      if (this.$router) {
+        this.$router.push({ path: '/index', query: { redirect: back } });
+      }
+
+      // 7) 反馈
+      if (this.$message && this.$message.success) {
+        this.$message.success('已退出登录');
+      }
+
+      this.loggingOut = false;
+      window.location.reload();
     },
     goToLogin() {
       this.$router.push({ path: '/login', query: { redirect: this.$route.fullPath } })
