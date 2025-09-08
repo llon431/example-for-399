@@ -6,19 +6,42 @@
       <p>校园二手交易平台 —— 让闲置流动，让资源共享。</p>
     </section>
 
-    <!-- 2️⃣ 项目介绍 -->
-    <section class="project-section">
-      <h2>项目介绍</h2>
-      <p>
-        我们的校园二手交易平台致力于为同学们提供一个安全、便捷、环保的二手交易社区。
-        在这里，你可以轻松发布闲置物品，找到实惠的二手好物，并与校友面对面完成交易。
-      </p>
-      <ul>
-        <li>📦 方便快捷：同校交易，线下当面交付</li>
-        <li>💰 安全可靠：实名认证保障交易安全</li>
-        <li>🌱 绿色环保：让闲置物品再次被利用</li>
-        <li>🤝 校园互助：拉近同学之间的距离</li>
-      </ul>
+    <!-- 2️⃣ 项目介绍（带弧形动画 + 圆形文字） -->
+    <section ref="project" class="project-section">
+      <!-- 弧形 SVG -->
+      <div class="curve">
+        <svg viewBox="0 0 1440 150" xmlns="http://www.w3.org/2000/svg">
+          <path
+              :class="{ animate: projectVisible }"
+              d="M0,150 L1440,150 L1440,0 L0,0 Z"
+              fill="#2b2b2b"
+          ></path>
+        </svg>
+      </div>
+
+      <!-- 圆形旋转文字 -->
+      <div class="circular-text-wrapper" v-if="projectVisible">
+        <CircularText
+            text="BAG2BAG2BAG2"
+            :spinDuration="20"
+            onHover="speedUp"
+        />
+      </div>
+
+      <!-- 文字内容 -->
+      <div class="project-content" :class="{ active: projectVisible }">
+        <h2>项目介绍</h2>
+        <p>
+          我们的校园二手交易平台致力于为同学们提供一个安全、便捷、环保的二手交易社区。
+          在这里，你可以轻松发布闲置物品，找到实惠的二手好物，并与校友面对面完成交易。
+        </p>
+        <ul>
+          <li>📦 方便快捷：同校交易，线下当面交付</li>
+          <li>💰 安全可靠：实名认证保障交易安全</li>
+          <li>🌱 绿色环保：让闲置物品再次被利用</li>
+          <li>🤝 校园互助：拉近同学之间的距离</li>
+        </ul>
+      </div>
     </section>
 
     <!-- 3️⃣ 团队介绍 -->
@@ -62,71 +85,56 @@
 
 <script>
 import ProfileCard from "@/components/common/teamprofilecard.vue";
+import CircularText from "@/components/common/CircularText.vue"; // Vue 2 CircularText 组件
 
 export default {
-  name: "About",
-  components: { ProfileCard },
+  name: "AboutUs",
+  components: { ProfileCard, CircularText },
   data() {
     return {
       currentIndex: 0,
+      projectVisible: false,
       team: [
-        {
-          name: "Alice Johnson",
-          username: "alice",
-          avatar: "",
-          bio: "前端开发专家，热爱 UI/UX 设计。"
-        },
-        {
-          name: "Bob Smith",
-          username: "bob",
-          avatar: "",
-          bio: "后端工程师，擅长数据库与系统架构。"
-        },
-        {
-          name: "Cathy Lee",
-          username: "cathy",
-          avatar: "",
-          bio: "产品经理，负责团队沟通与项目推进。"
-        },
-        {
-          name: "David Brown",
-          username: "david",
-          avatar: "",
-          bio: "AI 工程师，专注于机器学习与数据分析。"
-        },
-        {
-          name: "Eva Green",
-          username: "eva",
-          avatar: "",
-          bio: "市场与品牌专家，热衷于用户体验研究。"
-        }
+        { name: "Alice Johnson", username: "alice", avatar: "", bio: "前端开发专家，热爱 UI/UX 设计。" },
+        { name: "Bob Smith", username: "bob", avatar: "", bio: "后端工程师，擅长数据库与系统架构。" },
+        { name: "Cathy Lee", username: "cathy", avatar: "", bio: "产品经理，负责团队沟通与项目推进。" },
+        { name: "David Brown", username: "david", avatar: "", bio: "AI 工程师，专注于机器学习与数据分析。" },
+        { name: "Eva Green", username: "eva", avatar: "", bio: "市场与品牌专家，热衷于用户体验研究。" }
       ]
     };
   },
   mounted() {
+    // 监听滚动切换团队卡片
     window.addEventListener("scroll", this.handleScroll, { passive: true });
     this.handleScroll();
+
+    // 监听项目介绍进入视口
+    const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            this.projectVisible = true;
+          }
+        },
+        { threshold: 0.3 }
+    );
+    observer.observe(this.$refs.project);
   },
-  beforeUnmount() {
+  beforeDestroy() {
     window.removeEventListener("scroll", this.handleScroll);
   },
   methods: {
     handleScroll() {
       const container = document.querySelector(".team-section");
       const cards = document.querySelector(".cards-container");
-
       if (!container || !cards) return;
 
       const totalHeight = cards.offsetHeight;
       const sectionHeight = totalHeight / this.team.length;
-
-      // 计算相对 team-section 的滚动量
       const scrollY = window.scrollY - container.offsetTop;
-      let index = Math.floor(scrollY / sectionHeight);
 
+      let index = Math.floor(scrollY / sectionHeight);
       if (index < 0) index = 0;
       if (index >= this.team.length) index = this.team.length - 1;
-
       this.currentIndex = index;
     }
   }
@@ -135,7 +143,7 @@ export default {
 
 <style scoped>
 .about-page {
-  background: #1a1a1a; /* 全局深灰背景 */
+  background: #1a1a1a;
   font-family: sans-serif;
   color: #f5f5f5;
 }
@@ -144,7 +152,6 @@ export default {
 .hero-section {
   height: 100vh;
   background: linear-gradient(135deg, #1e1e1e 0%, #2c2c2c 100%);
-  color: #f5f5f5;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -154,7 +161,6 @@ export default {
 .hero-section h1 {
   font-size: 56px;
   margin-bottom: 20px;
-  color: #ffffff;
 }
 .hero-section p {
   font-size: 22px;
@@ -165,28 +171,65 @@ export default {
 
 /* 2️⃣ 项目介绍 */
 .project-section {
-  padding: 80px 20px;
+  position: relative;
+  background: #2b2b2b;
+  overflow: hidden;
+}
+
+.curve {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 100%;
+  height: 150px;
+  line-height: 0;
+}
+.curve path {
+  transition: d 1.5s ease-in-out;
+}
+.curve path.animate {
+  d: path("M0,150 C480,0 960,0 1440,150 L1440,0 L0,0 Z");
+}
+
+/* 圆形旋转文字 */
+.circular-text-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 60px;
+  position: relative;
+  z-index: 2;
+}
+
+.project-content {
+  padding: 120px 20px 80px;
   max-width: 900px;
   margin: 0 auto;
   text-align: center;
-  border-radius: 12px;
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
 }
-.project-section h2 {
+.project-content.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.project-content h2 {
   font-size: 32px;
   margin-bottom: 20px;
-  color: #ffffff;
 }
-.project-section p {
+.project-content p {
   font-size: 18px;
   line-height: 1.6;
   margin-bottom: 30px;
   color: #dddddd;
 }
-.project-section ul {
+.project-content ul {
   list-style: none;
   padding: 0;
 }
-.project-section li {
+.project-content li {
   font-size: 18px;
   margin: 12px 0;
   color: #bbbbbb;
@@ -201,16 +244,9 @@ export default {
   text-align: center;
   margin-bottom: 40px;
 }
-.header-section h2 {
-  color: #ffffff;
-}
-.header-section p {
-  color: #cccccc;
-}
 .content-container {
   display: flex;
   position: relative;
-  justify-content: flex-start;
   gap: 20px;
 }
 .cards-container {
@@ -237,15 +273,13 @@ export default {
   padding-left: 300px;
 }
 .bio-text h3 {
-  font-size: 28px;   /* 人名标题放大 */
+  font-size: 28px;
   margin-bottom: 12px;
-  color: #ffffff;    /* 保持亮白色 */
 }
-
 .bio-text p {
-  font-size: 18px;   /* 简介文字放大 */
-  line-height: 1.8;  /* 行间距更舒服 */
-  color: #cccccc;    /* 用浅灰，避免太亮 */
+  font-size: 18px;
+  line-height: 1.8;
+  color: #cccccc;
 }
 
 /* 淡入淡出动画 */
@@ -256,14 +290,6 @@ export default {
 .fade-enter-from {
   opacity: 0;
   transform: translateY(20px);
-}
-.fade-enter-to {
-  opacity: 1;
-  transform: translateY(0);
-}
-.fade-leave-from {
-  opacity: 1;
-  transform: translateY(0);
 }
 .fade-leave-to {
   opacity: 0;
