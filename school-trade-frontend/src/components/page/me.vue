@@ -346,7 +346,9 @@ export default {
     });
   },
   methods: {
-
+    goDetails(id) {
+      this.$router.push({ path: "/idle-details", query: { id } });
+    },
     async ensureUser() {
       if (this.$globalData && this.$globalData.userInfo && this.$globalData.userInfo.id) return;
       const r = await this.$api.getUserInfo();
@@ -680,11 +682,7 @@ export default {
     toDetails(activeName, item) {
       if (activeName === '5'||activeName === '6') {
         this.$router.push({path: '/order', query: {id: item.id}});
-      } else if (activeName === '1') {
-        this.$router.push({path: '/sell', query: {id: item.id}});
-      } else if (activeName === '2') {
-        this.$router.push({path: '/exchange', query: {id: item.id}});
-      } else {
+      }else {
         this.$router.push({path: '/details', query: {id: item.id}});
       }
     },
