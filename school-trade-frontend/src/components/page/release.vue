@@ -328,7 +328,7 @@ export default {
       var data = await this.$api.uploadFile(fd); // 方案A：已解包成 data
 
       if (!data || data.status_code !== 1) {
-        throw new Error((data && data.msg) ? data.msg : '圖片上傳失敗');
+        throw new Error((data && data.msg) ? data.msg : 'Image Upload Fail');
       }
 
       // 後端可能回字串或 { url: '...' }
@@ -342,7 +342,7 @@ export default {
       }
 
       if (!url) {
-        throw new Error('上傳結果無效');
+        throw new Error('Image Upload Fail');
       }
       return url;                                // 後端回的完整圖片 URL
     },
@@ -377,11 +377,9 @@ export default {
 
 
     async submitForm () {
-      console.log('[submit] click');
-
-      if (!this.isFormValid) { this.toast('error','請填完必填欄位'); return; }
+      if (!this.isFormValid) { this.toast('error','Please complete item info'); return; }
       if (!this.form.picture_list || !this.form.picture_list.length) {
-        this.toast('error','請先選擇至少一張圖片'); return;
+        this.toast('error','Please Upload At Least One Image'); return;
       }
 
       try {
@@ -411,14 +409,14 @@ export default {
         const data = await this.$api.addIdleItem(payload);  // request.js 會自動 Content-Type: application/json
 
         if (data && data.status_code === 1) {
-          this.toast('success', this.form.idle_trade === 1 ? '發布成功（出售）' : '發布成功（交換）');
+          this.toast('success', this.form.idle_trade === 1 ? 'Post Success (Sell)' : 'Post Success (Exchange)');
           this.$router && this.$router.push && this.$router.push('/');
         } else {
-          this.toast('error', (data && data.msg) ? data.msg : '發布失敗');
+          this.toast('error', (data && data.msg) ? data.msg : 'Post Error');
         }
       } catch (e) {
         console.error(e);
-        this.toast('error', e && e.message ? e.message : '提交失敗');
+        this.toast('error', e && e.message ? e.message : 'Submit Fail');
       }
     }
 

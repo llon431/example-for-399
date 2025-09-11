@@ -153,7 +153,7 @@ export default {
     },
     findIdleTiem (page) {
       const loading = this.$loading({
-        lock: true, text: '加载数据中', spinner: 'el-icon-loading', background: 'rgba(0,0,0,0)'
+        lock: true, text: 'Loading', spinner: 'el-icon-loading', background: 'rgba(0,0,0,0)'
       })
 
       const labelNum = Number(this.labelName || 0)
@@ -272,13 +272,13 @@ export default {
       // 0) 取 id
       var idleId = (idle && idle.id != null) ? idle.id : (idle && idle.idleId != null ? idle.idleId : null);
       if (idleId == null) {
-        this.$message && this.$message.warning && this.$message.warning('物品資料缺少 id，無法收藏');
+        this.$message && this.$message.warning && this.$message.warning('Item without an ID');
         return;
       }
 
       // 1) 登入檢查
       if (!this.isAuthed || !this.isAuthed()) {
-        if (this.$message && this.$message.warning) this.$message.warning('請先登入'); else alert('請先登入');
+        if (this.$message && this.$message.warning) this.$message.warning('Please Login'); else alert('Please Login');
         var back = (this.$route && this.$route.fullPath) ? this.$route.fullPath : '/';
         this.$router && this.$router.push && this.$router.push({ path: '/login', query: { redirect: back }});
         return;
@@ -297,36 +297,36 @@ export default {
             await this.initFavorites();
             favoriteId = this.favIdByIdle ? this.favIdByIdle[idleId] : null;
           }
-          if (favoriteId == null) throw new Error('未找到對應的收藏記錄');
+          if (favoriteId == null) throw new Error('No corresponding Favorite record found');
 
           // 樂觀更新
           var next = Object.assign({}, this.likedMap || {}); delete next[idleId]; this.likedMap = next;
           var nextFav = Object.assign({}, this.favIdByIdle || {}); delete nextFav[idleId]; this.favIdByIdle = nextFav;
 
-          if (!this.$api || typeof this.$api.deleteFavorite !== 'function') throw new Error('接口未註冊：deleteFavorite');
+          if (!this.$api || typeof this.$api.deleteFavorite !== 'function') throw new Error('Interface not registered：deleteFavorite');
           var res = await this.$api.deleteFavorite({ id: favoriteId });
 
           var code = this._getCode(res);
           if (!(code === 1 || code === 200 || code === 204)) {
-            throw new Error(this._getMsg(res, '刪除失敗'));
+            throw new Error(this._getMsg(res, 'Remove Fail'));
           }
-          this.$message && this.$message.success && this.$message.success('已從喜歡移除');
+          this.$message && this.$message.success && this.$message.success('Remove From Your Favorites');
 
         } else {
           // —— 加入喜歡 ——
           var liked2 = Object.assign({}, this.likedMap || {}); liked2[idleId] = true; this.likedMap = liked2;
 
-          if (!this.$api || typeof this.$api.addFavorite !== 'function') throw new Error('接口未註冊：addFavorite');
+          if (!this.$api || typeof this.$api.addFavorite !== 'function') throw new Error('Interface not registered：addFavorite');
           var res2 = await this.$api.addFavorite({ idleId: idleId });
 
           var code2 = this._getCode(res2);
           // 成功容忍 1 / 200 / 201
           if (!(code2 === 1 || code2 === 200 || code2 === 201)) {
-            throw new Error(this._getMsg(res2, '添加失敗'));
+            throw new Error(this._getMsg(res2, 'Add Fail'));
           }
 
           if (typeof this.initFavorites === 'function') await this.initFavorites();
-          this.$message && this.$message.success && this.$message.success('已加入喜歡');
+          this.$message && this.$message.success && this.$message.success('Add to Your Favorites');
         }
       } catch (e) {
         // 回滾
@@ -342,7 +342,7 @@ export default {
           return;
         }
 
-        this.$message && this.$message.error ? this.$message.error(msg || '操作失敗，請稍後再試') : alert(msg || '操作失敗，請稍後再試');
+        this.$message && this.$message.error ? this.$message.error(msg || 'please try again later') : alert(msg || 'please try again later');
         console.error(e);
       }
     }

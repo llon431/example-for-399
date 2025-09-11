@@ -587,12 +587,6 @@ export default {
 
 
 
-
-
-
-
-
-    //！！！！！還未實現//
     handleSell(item, index) {
       this.$confirm('Confirm to list this item for sale?', 'Confirmation', {
         confirmButtonText: 'Confirm',
@@ -613,6 +607,7 @@ export default {
         this.$message.success('Exchange proposal submitted successfully!');
       });
     },
+
     getMySoldIdle(){
       this.$api.getMySoldIdle().then(res=>{
         if (res.status_code === 1){
@@ -631,6 +626,7 @@ export default {
         }
       })
     },
+
     getMyOrder(){
       this.$api.getMyOrder().then(res=>{
         if (res.status_code === 1){
@@ -649,6 +645,7 @@ export default {
         }
       })
     },
+
     getIdleItemData() {
       this.$api.getAllIdleItem().then(res => {
         if (res.status_code === 1) {
@@ -665,8 +662,8 @@ export default {
     },
 
 
-    //主控臺//
 
+    //保存以及修改個人用戶資料//
     saveUserNickname() {
       this.notUserNicknameEdit = true;
       this.$api.updateUserPublicInfo({

@@ -51,7 +51,7 @@
             <p class="details-price">NZD ${{ idleItemInfo.idlePrice }}</p>
             <p class="details-place">Transaction Type：{{ tradeText }}</p>
             <p class="details-place">Condition：{{ newText }}</p>
-            <p class="details-place">发布时间：{{formatDate(idleItemInfo.releaseTime) }}</p>
+            <p class="details-place">Post Time：{{formatDate(idleItemInfo.releaseTime) }}</p>
             <!-- 商品描述 -->
             <div class="details-description" v-html="idleItemInfo.idleDetails"></div>
             <div class="details-actions">
@@ -61,7 +61,7 @@
                   plain
                   @click="buyButton(idleItemInfo)"
               >
-                立即购买
+                BUY!
               </el-button>
               <el-button
                   v-if="!isMaster && idleItemInfo.idleStatus === 1"
@@ -69,7 +69,7 @@
                   plain
                   @click="favoriteButton(idleItemInfo)"
               >
-                {{ isFavorite ? '取消收藏' : '收藏' }}
+                {{ isFavorite ? 'Remove From Favorite' : 'Add to Favorite' }}
               </el-button>
               <el-button
                   v-if="isMaster && idleItemInfo.idleStatus === 1"
@@ -77,7 +77,7 @@
                   plain
                   @click="changeStatus(idleItemInfo, 2)"
               >
-                下架
+                Unlisted items
               </el-button>
               <el-button
                   v-if="isMaster && idleItemInfo.idleStatus === 2"
@@ -85,25 +85,25 @@
                   plain
                   @click="changeStatus(idleItemInfo, 1)"
               >
-                重新上架
+                ReListed items
               </el-button>
             </div>
           </div>
         </div>
         <!-- 留言区 -->
         <div class="message-container">
-          <h3 class="message-title">全部留言</h3>
+          <h3 class="message-title">All Message</h3>
           <div class="message-send">
             <el-input
                 type="textarea"
                 autosize
-                placeholder="留言提问..."
+                placeholder="Write your Message..."
                 v-model="messageContent"
                 maxlength="200"
                 show-word-limit
             />
             <div class="message-send-button">
-              <el-button plain @click="sendMessage">发送留言</el-button>
+              <el-button plain @click="sendMessage">Send Message</el-button>
             </div>
           </div>
 
@@ -121,7 +121,7 @@
               </div>
             </div>
             <div class="message-right">
-              <el-button plain @click="replyMessage(index)">回复</el-button>
+              <el-button plain @click="replyMessage(index)">Reply</el-button>
             </div>
           </div>
         </div>

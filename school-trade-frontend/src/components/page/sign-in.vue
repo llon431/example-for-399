@@ -80,7 +80,7 @@ export default {
       logo: Logo,
       userPassword2:'',
       emailCode:'',
-      codeBtnText:'点击获取',
+      codeBtnText:'Click to get Code',
       codeBtnDisabled:false,
       countdown:60,
       timer:null,
