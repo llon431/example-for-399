@@ -133,6 +133,13 @@ const api = {
             data: data
         });
     },
+    getPublicUser(query) {
+        // 後端路由：GET /user/{id}
+        return request({
+            url: `/user/${query.id}`,
+            method: 'get'
+        });
+    },
     getOrder(query) {
         return request({
             url: '/order/info',

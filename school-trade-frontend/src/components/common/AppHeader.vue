@@ -211,8 +211,12 @@ export default {
     goToLogin() {
       this.$router.push({ path: '/login', query: { redirect: this.$route.fullPath } })
     },
-    goToProfile() {
-      this.$router.push('/me')
+    goToProfile () {
+      if (this.$route && this.$route.name === 'me') {
+        this.$router.replace({ name: 'me', query: { r: Date.now() } }) // 已在 /me -> 觸發刷新
+      } else {
+        this.$router.push({ name: 'me' })
+      }
       this.drawer = false
     }
   },

@@ -55,4 +55,6 @@ public interface UserService {
     boolean updatePassword(String newPassword, String oldPassword, Long id);
 
     PageVo<User> getUserByStatus(int status, int page, int nums);
+
+    User getPublicUserById(Long id);
 }

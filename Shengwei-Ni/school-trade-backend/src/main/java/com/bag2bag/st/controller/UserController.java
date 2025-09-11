@@ -14,6 +14,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -152,6 +153,25 @@ public class UserController {
             return R.fail(ErrorMsg.COOKIE_ERROR);
         }
         return R.success(userService.getUser(Long.valueOf(id)));
+    }
+
+    @GetMapping("{id}")
+    public R getPublicUserById(@PathVariable("id") Long id) {
+        User user = userService.getUser(id);   // 已存在的 Service 方法
+        if (user == null) {
+            return R.fail(ErrorMsg.SYSTEM_ERROR); // 沒這個人時回 404/自定錯誤
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", user.getId());
+        data.put("nickname", user.getNickname());
+        data.put("avatar", user.getAvatar());
+        data.put("country", user.getCountry());   // ← 確認實體有這些 getter
+        data.put("major", user.getMajor());
+        data.put("degree", user.getDegree());
+        data.put("signInTime", user.getSignInTime());
+
+        return R.success(data);
     }
 
     /**

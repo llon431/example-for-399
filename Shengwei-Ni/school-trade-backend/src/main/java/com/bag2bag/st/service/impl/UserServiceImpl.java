@@ -60,4 +60,10 @@ public class UserServiceImpl implements UserService {
         return new PageVo<>(list, count);
     }
 
+    @Override
+    public User getPublicUserById(Long id) {
+        // 可直接複用 selectByPrimaryKey；或用 selectPublicById（見下）
+        return userMapper.selectByPrimaryKey(id);
+    }
+
 }

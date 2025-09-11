@@ -77,12 +77,16 @@ public class IdleItemController {
      */
     @GetMapping("all")
     public R getAllIdleItem(
-            @CookieValue(value = "shUserId", defaultValue = "") String shUserId
+            @CookieValue(value = "shUserId", defaultValue = "") String shUserId,
+            @RequestParam(value = "userId", required = false) Long userId,
+            @RequestParam(value = "trade",  required = false) Integer trade
     ) {
-        if (shUserId.isEmpty()) {
+        Long targetUserId = (userId != null) ? userId
+                : (!shUserId.isEmpty() ? Long.valueOf(shUserId) : null);
+        if (targetUserId == null) {
             return R.fail(ErrorMsg.COOKIE_ERROR);
         }
-        return R.success(idleItemService.getAllIdelItem(Long.valueOf(shUserId)));
+        return R.success(idleItemService.getAllIdelItem(targetUserId));
     }
 
     /**

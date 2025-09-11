@@ -8,6 +8,8 @@
           <el-image
               style="width: 60px; height: 60px; border-radius: 5px;"
               :src="idleItemInfo.user.avatar"
+              @click="goSeller(idleItemInfo.userId)"
+              @keyup.enter="goSeller(idleItemInfo.userId)"
               fit="contain"
           />
           <div class="seller-text">
@@ -277,6 +279,25 @@ export default {
             this.$message.success("已收藏！");
           }
         });
+      }
+    },
+    goSeller: function (sellerId) {
+      var myId = null;
+      if (this.$store && this.$store.state && this.$store.state.user) {
+        myId = this.$store.state.user.userId || this.$store.state.user.id;
+      }
+      if (!myId && this.$globalData && this.$globalData.userInfo) {
+        myId = this.$globalData.userInfo.userId || this.$globalData.userInfo.id;
+      }
+
+      if (String(sellerId) === String(myId)) {
+        if (this.$route && this.$route.name === 'me') {
+          this.$router.replace({ name: 'me', query: { r: Date.now() } });
+        } else {
+          this.$router.push({ name: 'me' });
+        }
+      } else {
+        this.$router.push({ name: 'user-profile', params: { id: sellerId } });
       }
     }
   }

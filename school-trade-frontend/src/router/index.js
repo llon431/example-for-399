@@ -29,9 +29,14 @@ export default new Router({
             meta: { title: '闲置二手物品 | 二手物品交易平台' }
         },
         {
-            path: '/me',
+            path: '/me', name: 'me',
             component: () => import('../components/page/me.vue'),
             meta: { title: '个人中心 | 二手物品交易平台' }
+        },
+        { path: '/user/:id', name: 'user-profile',
+            component: () => import('../components/page/me.vue'),
+            props: true,
+            meta: { title: '用户资料 | 二手物品交易平台' }
         },
         {
             path: '/message',

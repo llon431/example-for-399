@@ -16,6 +16,7 @@
             <div class="profile-main">
               <div class="avatar-section">
                 <el-upload
+                    v-if="isSelf"
                     action="http://localhost:8080/file/"
                     :on-success="fileHandleSuccess"
                     :file-list="imgFileList"
@@ -37,6 +38,13 @@
                     </div>
                   </div>
                 </el-upload>
+                <div v-else class="avatar-wrapper">
+                  <el-image class="user-avatar" :src="userInfo.avatar" fit="cover">
+                    <div slot="error" class="avatar-placeholder">
+                      <i class="el-icon-user-solid"></i>
+                    </div>
+                  </el-image>
+                </div>
               </div>
 
               <div class="profile-info">
@@ -77,7 +85,7 @@
                 </div>
 
                 <div class="profile-actions">
-                  <el-button type="primary" icon="el-icon-edit" @click="userInfoDialogVisible = true" class="edit-profile-btn">
+                  <el-button type="primary" icon="el-icon-edit" @click="userInfoDialogVisible = true" v-if="isSelf" class="edit-profile-btn">
                     Edit Your Profile
                   </el-button>
                 </div>
@@ -191,25 +199,25 @@
               Want Exchange
             </span>
           </el-tab-pane>
-          <el-tab-pane name="3">
+          <el-tab-pane name="3" v-if="isSelf">
             <span slot="label">
               <i class="el-icon-remove"></i>
               My Delisted
             </span>
           </el-tab-pane>
-          <el-tab-pane name="4">
+          <el-tab-pane name="4" v-if="isSelf">
             <span slot="label">
               <i class="el-icon-star-on"></i>
               My Favorites
             </span>
           </el-tab-pane>
-          <el-tab-pane name="5">
+          <el-tab-pane name="5" v-if="isSelf">
             <span slot="label">
               <i class="el-icon-sold-out"></i>
               My Sales
             </span>
           </el-tab-pane>
-          <el-tab-pane name="6">
+          <el-tab-pane name="6" v-if="isSelf">
             <span slot="label">
               <i class="el-icon-shopping-bag-2"></i>
               My Purchases
@@ -259,7 +267,7 @@
                   {{handleName[activeName-1]}}
                 </el-button>
                 <el-button
-                    v-if="activeName==='1'"
+                    v-if="activeName==='1' && isSelf"
                     type="success"
                     size="mini"
                     plain
@@ -267,7 +275,7 @@
                   Publish for Sale
                 </el-button>
                 <el-button
-                    v-if="activeName==='2'"
+                    v-if="activeName==='2' && isSelf"
                     type="primary"
                     size="mini"
                     plain
@@ -297,9 +305,51 @@ export default {
     AppBody,
     AppFoot
   },
+  props: {
+    id: { type: [String, Number], default: null } // 供 /user/:id 使用
+  },
+
+  beforeRouteUpdate (to, from, next) {
+    // 1) 取目標 id 與自己 id
+    const toId = to.params && to.params.id ? String(to.params.id) : null
+    const myId = this.myId != null ? String(this.myId) : null
+
+    // 2) 清掉上一位使用者的畫面資料，避免殘留
+    this.userInfo = {}
+    this.$set(this.dataList, 0, [])
+    this.$set(this.dataList, 1, [])
+    try { sessionStorage.removeItem('viewUserProfile') } catch (e) {}
+
+    // 3) 分流：看別人 or 看自己
+    const load = (toId && myId && toId !== myId)
+        ? this.loadOtherProfile(toId).then(() => Promise.all([
+          this.getSellItems(), this.getExchangeItems()
+        ]))
+        : this.loadSelfProfile().then(() => Promise.all([
+          this.getSellItems(), this.getExchangeItems(), this.getMyFavorite(true)
+        ]))
+
+    load.then(() => next()).catch(() => next())
+  },
+
+  computed: {
+    myId () {
+      var s = this.$store && this.$store.state && this.$store.state.user
+      var g = this.$globalData && this.$globalData.userInfo
+      return (s && (s.userId || s.id)) || (g && (g.userId || g.id)) || null
+    },
+    targetUserId () {
+      return this.id != null ? String(this.id) : (this.myId != null ? String(this.myId) : null)
+    },
+    isSelf () {
+      if (!this.targetUserId || !this.myId) return true
+      return String(this.targetUserId) === String(this.myId)
+    }
+  },
+
   data() {
     return {
-      imgFileList: [],
+      pictureList: [],
       activeName: '1',
       handleName: ['Publish', 'Exchange', 'Delete', 'Remove Favorite', '', ''],
       dataList: [[], [], [], [], [], []], // Sell, Exchange, Delisted, Favorites, Sales, Purchases
@@ -326,35 +376,80 @@ export default {
       }
     };
   },
-  created() {
-    if (!this.$globalData.userInfo.nickname) {
-      this.$api.getUserInfo().then(res => {
-        if (res.status_code === 1) {
-          res.data.sign_in_time = res.data.sign_in_time.substring(0, 10);
-          this.$globalData.userInfo = res.data;
-          this.userInfo = this.$globalData.userInfo;
-        }
-      })
+  created: async function () {
+    // 先確保拿到自己的登入資訊（但不要動 this.userInfo）
+    await this.ensureUser();
+
+    var routeId = this.id != null ? String(this.id) : null;
+    var myId    = this.myId != null ? String(this.myId) : null;
+
+    console.log('[me.vue created]', { routeId, myId, isSelf: this.isSelf });
+
+    if (routeId && myId && routeId !== myId) {
+      // --- 他人模式 ---
+      console.log('[me.vue] 他人模式，呼叫 getUserById', routeId);
+      await this.loadOtherProfile(routeId);     // 只把畫面用的 userInfo 換成對方
+      await this.getSellItems();                // 用 targetUserId 拉對方清單
+      await this.getExchangeItems();
+      // ❌ 不要呼叫 getMyFavorite()/我的訂單 等自用 API
     } else {
-      this.userInfo = this.$globalData.userInfo;
+      // --- 自己模式 ---
+      console.log('[me.vue] 自己模式，呼叫 loadSelfProfile');
+      await this.loadSelfProfile();             // 把畫面用的 userInfo 設為自己
+      await this.getSellItems();                // 用 targetUserId 拉自己的清單
+      await this.getExchangeItems();
+      await this.getMyFavorite(true);           // ✅ 只有自己時才拉
     }
-    this.ensureUser().then(() => {
-      console.log('[created]');
-      this.getSellItems();       // 預設分頁「Want Sell」一定要拉
-      this.getExchangeItems();   // 看需求，也可懶得先拉
-      this.getMyFavorite();
-    });
   },
+
   methods: {
+    async ensureUser () {
+      // 只確保 $globalData.userInfo 補齊，別動 this.userInfo
+      if (this.$globalData && this.$globalData.userInfo && (this.$globalData.userInfo.id || this.$globalData.userInfo.userId)) return;
+      const r = await this.$api.getUserInfo();
+      if (r && (r.status_code === 1 || r.code === 200 || r.success)) {
+        this.$globalData.userInfo = r.data || r.result || r.body || {};
+      }
+    },
+
+    async loadSelfProfile () {
+      if (!this.$globalData || !this.$globalData.userInfo) {
+        const r = await this.$api.getUserInfo();
+        if (r && (r.status_code === 1 || r.code === 200 || r.success)) {
+          this.$globalData.userInfo = r.data || r.result || r.body || {};
+        }
+      }
+      this.userInfo = (this.$globalData && this.$globalData.userInfo) ? this.$globalData.userInfo : {};
+      // 可加保底欄位
+      this.userInfo.nickname = this.userInfo.nickname || 'User name';
+    },
+
+
+    async loadOtherProfile (uid) {
+      try {
+        const res = await this.$api.getPublicUser({ id: uid })
+        if (res && (res.status_code === 1 || res.code === 200)) {
+          const d = res.data || res.result || res.body || {}
+          this.userInfo = {
+            id: d.id,
+            avatar: d.avatar || '',
+            nickname: d.nickname || 'User name',
+            country: d.country || '',
+            major: d.major || '',
+            degree: d.degree || '',
+            signInTime: d.signInTime || ''
+          }
+          return
+        }
+      } catch (e) {
+        console.warn('loadOtherProfile failed', e)
+      }
+      this.userInfo = { id: Number(uid), nickname: 'User name' } // 保底
+    },
+
+
     goDetails(id) {
       this.$router.push({ path: "/idle-details", query: { id } });
-    },
-    async ensureUser() {
-      if (this.$globalData && this.$globalData.userInfo && this.$globalData.userInfo.id) return;
-      const r = await this.$api.getUserInfo();
-      if (r && r.status_code === 1) {
-        this.$globalData.userInfo = r.data;
-      }
     },
 
     safePics(p) {
@@ -367,12 +462,6 @@ export default {
         return [String(p)];
       }
     },
-
-    pickTime(row) {
-      var t = row.releaseTime || row.release_time || row.createTime || row.create_time || '';
-      return (t || '').slice(0,10) + ' ' + (t || '').slice(11,19);
-    },
-
 
 
 
@@ -409,21 +498,17 @@ export default {
       }
     },
 
-
     // 顯示sell 的内容//
-    async getSellItems() {
-      var uid = this.$globalData && this.$globalData.userInfo && this.$globalData.userInfo.id
-          ? Number(this.$globalData.userInfo.id) : 0;
-      if (!uid) return;
+    async getSellItems () {
+      const uid = Number(this.targetUserId || 0);
+      if (!uid) { this.$set(this.dataList, 0, []); return; }
 
-      this.dataList[0] = [];
-
-      const res  = await this.$api.getAllIdleItem();
+      // 後端已支援 trade 參數（推薦）
+      const res  = await this.$api.getAllIdleItem({ userId: uid, trade: 1 });
       const list = (res && Array.isArray(res.data)) ? res.data : [];
-
       const rows = list
           .filter(function(r){
-            var userId = (r.user_id !== undefined && r.user_id !== null) ? r.user_id : r.userId;
+            var userId = (uid !== undefined && uid !== null) ? uid : uid;
             return Number(userId) === uid;
           })
           .map((r) => {
@@ -434,30 +519,22 @@ export default {
             var obj = Object.assign({}, r);
             obj.idleTrade = Number(trade);
             obj.imgUrl    = pics[0] || '';
-            obj.timeStr   = this.pickTime(r);
             return obj;
           })
           .filter(function(r){ return r.idleTrade === 1; });
-
-      // 用 $set 確保響應
       this.$set(this.dataList, 0, rows);
     },
 
-
     // 顯示exchange 的内容//
-    async getExchangeItems() {
-      var uid = this.$globalData && this.$globalData.userInfo && this.$globalData.userInfo.id
-          ? Number(this.$globalData.userInfo.id) : 0;
-      if (!uid) return;
+    async getExchangeItems () {
+      const uid = Number(this.targetUserId || 0);
+      if (!uid) { this.$set(this.dataList, 1, []); return; }
 
-      this.dataList[1] = [];
-
-      const res  = await this.$api.getAllIdleItem();
+      const res  = await this.$api.getAllIdleItem({ userId: uid, trade: 2 });
       const list = (res && Array.isArray(res.data)) ? res.data : [];
-
       const rows = list
           .filter(function(r){
-            var userId = (r.user_id !== undefined && r.user_id !== null) ? r.user_id : r.userId;
+            var userId = (uid !== undefined && uid !== null) ? uid : uid;
             return Number(userId) === uid;
           })
           .map((r) => {
@@ -468,13 +545,15 @@ export default {
             var obj = Object.assign({}, r);
             obj.idleTrade = Number(trade);
             obj.imgUrl    = pics[0] || '';
-            obj.timeStr   = this.pickTime(r);
             return obj;
           })
           .filter(function(r){ return r.idleTrade === 2; });
-
       this.$set(this.dataList, 1, rows);
     },
+
+
+
+
     // 顯示Favorite 的内容//
     async getMyFavorite(force = false) {
       console.log('[favorite] enter, force =', force);
@@ -737,14 +816,6 @@ export default {
       }).catch(() => {
         this.$message.error('Avatar update failed!');
       })
-    },
-  },
-  computed: {
-    displayedList() {
-      const map = { '1':0,'2':1,'3':2,'4':3,'5':4,'6':5 };
-      const idx = map[this.activeName] != null ? map[this.activeName] : 0;
-      const arr = this.dataList && this.dataList[idx];
-      return Array.isArray(arr) ? arr : [];
     },
   },
 }
