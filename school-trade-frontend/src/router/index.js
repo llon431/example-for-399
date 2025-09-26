@@ -85,6 +85,12 @@ export default new Router({
             meta: { title: 'Bag2Bag | About Us' }
         },
         {
+            path: '/privateChat',
+            name: 'privateChat',
+            component: () => import('../components/page/privateChat.vue'),
+            meta: { title: 'Bag2Bag | Private Chat' }
+        },
+        {
             path: '*',
             redirect: '/'
         }

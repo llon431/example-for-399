@@ -58,6 +58,13 @@
                   </div>
                 </div>
 
+                <div v-if="!isSelf" class="chat-bottom-bar">
+                  <el-button type="primary" icon="el-icon-chat-dot-round" class="chat-bottom-btn" @click="goPrivateChat">
+                    chat with him
+                  </el-button>
+                </div>
+
+
                 <div class="user-meta-grid">
                   <div class="meta-card">
                     <i class="el-icon-location detail-icon"></i>
@@ -445,6 +452,34 @@ export default {
         console.warn('loadOtherProfile failed', e)
       }
       this.userInfo = { id: Number(uid), nickname: 'User name' } // 保底
+    },
+
+    goPrivateChat () {
+      // 安全取得 targetId（不使用 ?.）
+      const targetId = this.targetUserId || this.userInfo.id
+      const selfId   = this.myId
+
+      if (!targetId) {
+        if (this.$message && this.$message.error) {
+          this.$message.error('找不到對方的ID，無法發起私聊');
+        } else {
+          alert('找不到對方的ID，無法發起私聊');
+        }
+        return;
+      }
+
+      // 跳轉到私聊頁
+      try {
+        this.$router.push({
+          name: 'privateChat',
+          query: { targetId: String(targetId), selfId: String(selfId) }
+        });
+      } catch (e) {
+        this.$router.push({
+          path: '/privateChat',
+          query: { targetId: String(targetId) }
+        });
+      }
     },
 
 
