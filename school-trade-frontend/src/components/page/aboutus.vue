@@ -46,6 +46,32 @@
       </div>
     </section>
 
+    <section class="flow">
+      <h2 class="flow-title">How It Works</h2>
+      <div class="flow-steps">
+        <div class="step">
+          <div class="icon">👜</div>
+          <h3>1. List Your Bag</h3>
+          <p>Upload photos and set your price in minutes.</p>
+        </div>
+        <div class="step">
+          <div class="icon">🔍</div>
+          <h3>2. Get Discovered</h3>
+          <p>Shoppers find your listing easily.</p>
+        </div>
+        <div class="step">
+          <div class="icon">🤝</div>
+          <h3>3. Make a Deal</h3>
+          <p>Chat and confirm your buyer securely.</p>
+        </div>
+        <div class="step">
+          <div class="icon">🚚</div>
+          <h3>4. Ship & Get Paid</h3>
+          <p>Send your item and receive payment fast.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- 3️⃣ 团队介绍 -->
     <section class="team-section">
       <div class="header-section">
@@ -271,6 +297,57 @@ export default {
   font-size: 18px;
   margin: 12px 0;
   color: #bbbbbb;
+}
+
+.flow {
+  padding: 80px 40px;
+  background: #2b2b2b
+;
+  text-align: center;
+}
+
+.flow-title {
+  font-size: 32px;
+  margin-bottom: 50px;
+  color: white;
+}
+
+.flow-steps {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.step {
+  flex: 1 1 220px;
+  margin: 20px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #1e3c72; /* 浅蓝背景块 */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transition: transform 0.3s ease;
+}
+
+.step:hover {
+  transform: translateY(-6px);
+}
+
+.step .icon {
+  font-size: 40px;
+  margin-bottom: 15px;
+}
+
+.step h3 {
+  font-size: 20px;
+  margin-bottom: 10px;
+  color: white;
+}
+
+.step p {
+  font-size: 16px;
+  color: white;
 }
 
 /* 3️⃣ 团队介绍 */
