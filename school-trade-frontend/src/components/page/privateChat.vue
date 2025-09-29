@@ -1,29 +1,64 @@
 <template>
   <div class="chat-page">
     <app-head />
-    <div class="topbar">
-      <div>自己ID：<strong>{{ selfId }}</strong></div>
-      <div class="peer">
-        對方ID：
-        <input v-model="peerId" placeholder="輸入對方的 userId（另一個視窗的 uid）" />
-      </div>
-    </div>
+    <div class="chat-wrapper">
+      <!-- 左側：會話列表 -->
+      <aside class="sidebar">
+        <div class="sidebar-header">會話列表</div>
+        <div v-if="!conversations.length" class="sidebar-empty">目前尚無會話</div>
+        <ul v-else class="conv-list">
+          <li
+              v-for="row in conversations"
+              :key="row.peerId"
+              :class="{ active: String(row.peerId) === String(peerId) }"
+          >
+            <a href="" @click.prevent="switchPeer(row.peerId)">
+              <div class="conv-title">
+                <span>用戶 {{ row.peerId }}</span>
+                <span v-if="row.unread" class="badge">{{ row.unread }}</span>
+              </div>
+              <div class="conv-sub">{{ row.lastText }}</div>
+              <div class="conv-time">{{ formatTs(row.lastTs) }}</div>
+            </a>
+          </li>
+        </ul>
+      </aside>
 
-    <div class="log">
-      <div v-for="(m,i) in messages" :key="i" class="msg" :class="m.from">
-        <span class="bubble">{{ m.text }}</span>
-      </div>
-    </div>
+      <!-- 右側：聊天區 -->
+      <section class="main">
+        <div class="topbar">
+          <div>自己ID：<strong>{{ selfId }}</strong></div>
+          <div>對方ID：<strong>{{ peerId }}</strong></div>
+        </div>
 
-    <div class="composer">
-      <input v-model="input" @keyup.enter="send" placeholder="輸入訊息 Enter 送出" />
-      <button @click="send">send</button>
+        <div ref="log" class="log">
+          <div v-for="(m,i) in messages" :key="i" class="msg" :class="m.from">
+            <div class="bubble">
+              <div class="text">{{ m.text }}</div>
+              <div class="ts">{{ formatTs(m.ts) }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="composer">
+          <input
+              v-model="input"
+              @keyup.enter="send"
+              placeholder="輸入訊息 Enter 送出"
+          />
+          <button @click="send">send</button>
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <script>
 import AppHead from '../common/AppHeader.vue'
+import { createChatStore, listConversations, resetUnread, recordOutgoing } from '@/stores/chatStoreLite'
+import { sendChat } from '@/utils/websocket'
+import { ensureGlobalChat, subscribeChat } from '@/utils/chatBus'
+
 export default {
   name: 'PrivateChat',
   components: {
@@ -31,318 +66,220 @@ export default {
   },
   data () {
     return {
-      socket: null,
-      reconnectTimer: null,
       selfId: '',
       peerId: '',
       input: '',
-      messages: [] // { from: 'me' | 'peer' | 'sys', text: string }
+      chat: null,            // 當前會話的本地 store
+      conversations: [],     // 左側會話列表
+      unsub: null            // chatBus 退訂函式
     }
   },
-
   computed: {
-    storageKey: function () {
-      if (!this.selfId || !this.peerId) return null
-      var pair = [String(this.selfId), String(this.peerId)].sort().join(':')
-      return 'chat:' + pair
-    }
+    messages () { return this.chat ? this.chat.state.messages : [] }
   },
-
-  created: function () {
+  created () {
+    // 讀路由參數
     const q = (this.$route && this.$route.query) ? this.$route.query : {}
+    this.selfId = q.selfId ? String(q.selfId) : ''
+    this.peerId = q.peerId ? String(q.peerId) : ''
 
-    // 自己的 uid，本地生成或已有
-    this.selfId = q.selfId || this.getOrCreateLocalUid()
-    this.peerId = q.targetId || q.to || ''
+    // ★ 確保全局只有一條 WS 連線（冪等，不會重複連）
+    ensureGlobalChat(this.selfId)
 
-    // 如果 me.vue 傳了 targetId，當作對方 ID
-    if (q.targetId) {
-      this.peerId = q.targetId
-    } else if (q.to) {
-      // 保留原本兼容 ?to=bob 的方式
-      this.peerId = q.to
-    }
+    // 初始化當前會話 & 左側列表
+    this.chat = createChatStore(this.selfId, this.peerId)
+    this.loadConversations()
   },
-
-  mounted: function () {
-    // 先載入歷史，再連線
-    this.loadHistory()
-    this.connect()
-
-    // messages 任一變動 → 自動保存
-    this.$watch('messages', this.saveHistory, { deep: true })
-
-    // 切換對方 → 載入該會話歷史
-    this.$watch('peerId', this.loadHistory)
+  mounted () {
+    // 訂閱全局聊天事件（任何頁面收到訊息都會經過這裡）
+    this.unsub = subscribeChat(this.onBusEvent)
+    // 進入當前會話，視為已讀
+    resetUnread(this.selfId, this.peerId)
+    this.$nextTick(this.scrollToBottom)
   },
-
-  beforeDestroy: function () {
-    this.saveHistory()
-    try { this.socket && this.socket.close() } catch (e) {}
-    clearTimeout(this.reconnectTimer); this.reconnectTimer = null
+  beforeDestroy () { this.unsub && this.unsub() },
+  watch: {
+    // 切換不同 peerId（從左側點選或外部跳轉）時，重建當前會話
+    '$route.query.peerId': function (n) {
+      this.peerId = n ? String(n) : ''
+      this.chat = createChatStore(this.selfId, this.peerId)
+      this.loadConversations()
+      resetUnread(this.selfId, this.peerId)
+      this.$nextTick(this.scrollToBottom)
+    },
+    // 新訊息來了自動捲到底
+    messages () { this.$nextTick(this.scrollToBottom) }
   },
-
   methods: {
-    getOrCreateLocalUid: function () {
-      var key = 'dev_uid'
-      var id = localStorage.getItem(key)
-      if (!id) {
-        id = 'user-' + Math.random().toString(36).slice(2, 8)
-        localStorage.setItem(key, id)
-      }
-      return id
+    // ===== 左側列表 =====
+    loadConversations () {
+      var list = listConversations(this.selfId) || []
+      this.conversations = list
+          .filter(function (r) { return r && typeof r === 'object' && r.peerId != null })
+          .map(function (r) { return {
+            peerId: String(r.peerId),
+            lastText: String(r.lastText || ''),
+            lastTs: Number(r.lastTs || 0),
+            unread: Number(r.unread || 0)
+          }})
+    },
+    switchPeer (pid) {
+      if (String(pid) === String(this.peerId)) return
+      this.$router.push({
+        name: 'PrivateChat',
+        query: { selfId: this.selfId, peerId: String(pid) }
+      })
     },
 
-    wsBaseUrl: function () {
-      // Vue2 / CLI 使用 VUE_APP_ 前綴
-      return (process.env.VUE_APP_WS_URL || 'ws://localhost:3001/webSocketServer')
-    },
+    // ===== 全局事件回調 =====
+    onBusEvent (e) {
+      if (!e || e.type !== 'chat') return
+      // 刷新左側列表（recordIncoming 已把索引/未讀寫好）
+      this.loadConversations()
 
-    connect: function () {
-      var url = this.wsBaseUrl().replace(/\/$/, '') + '/' + encodeURIComponent(this.selfId)
-      try { this.socket && this.socket.close() } catch (e) {}
-      this.socket = new WebSocket(url)
-
-      var self = this
-
-      this.socket.onopen = function () {
-        self.pushSys('已連線：' + self.selfId)
-      }
-
-      this.socket.onmessage = function (e) {
-        // 盡量把字串轉物件
-        var raw = e.data
-        var msg = raw
-        try { msg = JSON.parse(raw) } catch (err) { /* 不是 JSON 就保留字串 */ }
-
-        if (msg && msg.type === 'welcome') {
-          return
-        }
-        if (msg && msg.type === 'error') {
-          return
-        }
-        if (msg && msg.type === 'sent') {
-          // 送達回執：可顯示或忽略
-          return
-        }
-        if (msg && msg.type === 'chat') {
-          var text = (msg.text != null) ? String(msg.text) : ''
-          self.messages.push({ from: 'peer', text: text })
-          self.saveHistory()
-          return
-        }
-
-        // 其他未知訊息 → 當作系統訊息顯示
-        var text2 = (typeof msg === 'string') ? msg : JSON.stringify(msg)
-        self.messages.push({ from: 'sys', text: text2 })
-        self.saveHistory()
-      }
-
-      this.socket.onclose = function () {
-        self.pushSys('連線已關閉，1.5s 後嘗試重連…')
-        clearTimeout(self.reconnectTimer)
-        self.reconnectTimer = setTimeout(function () { self.connect() }, 1500)
-      }
-
-      this.socket.onerror = function (err) {
-        // 只記錄，不在這裡重連，避免 onclose 再重連造成風暴
-        // eslint-disable-next-line no-console
-        console.error('[WS error]', err)
+      // 若訊息來自當前 peer，右側也同步顯示並清未讀
+      if (String(e.from) === String(this.peerId)) {
+        this.chat.addMessage({ from: 'peer', text: e.text || '', ts: e.ts })
+        resetUnread(this.selfId, this.peerId)
+        this.$nextTick(this.scrollToBottom)
       }
     },
 
-    send: function () {
-      var text = (this.input || '').trim()
+    // ===== 發送 =====
+    send () {
+      const text = (this.input || '').trim()
       if (!text) return
-      if (!this.peerId || !this.peerId.trim()) {
-        this.pushSys('請先輸入對方ID')
-        return
-      }
-      if (!this.socket || this.socket.readyState !== 1) {
-        this.pushSys('尚未連線，稍後再試')
-        return
-      }
-      var payload = { type: 'chat', to: this.peerId.trim(), text: text, ts: Date.now() }
-      this.socket.send(JSON.stringify(payload))
-      this.messages.push({ from: 'me', text: text })
+      // 直接透過全局連線送出
+      sendChat(this.peerId, text)
+      // 本地更新索引與對話（不加未讀）
+      recordOutgoing(this.selfId, this.peerId, text)
+      // 右側同步（以確保 messages 立即顯示）
+      this.chat = createChatStore(this.selfId, this.peerId)
+      this.loadConversations()
       this.input = ''
-      this.saveHistory()
+      this.$nextTick(this.scrollToBottom)
     },
 
-    // 本地保存 / 讀取聊天記錄（localStorage）
-    loadHistory: function () {
-      if (!this.storageKey) return
-      try {
-        var raw = localStorage.getItem(this.storageKey)
-        if (raw) this.messages = JSON.parse(raw)
-      } catch (e) {}
+    // ===== UI 小工具 =====
+    pushSys (text, ts) { this.chat && this.chat.addMessage({ from: 'sys', text: text, ts: ts }) },
+    scrollToBottom () {
+      const el = this.$refs.log
+      if (!el) return
+      el.scrollTop = el.scrollHeight
     },
-    saveHistory: function () {
-      if (!this.storageKey) return
+    formatTs (ts) {
+      if (!ts) return ''
       try {
-        var trimmed = this.messages.slice(-500) // 最多存 500 則
-        localStorage.setItem(this.storageKey, JSON.stringify(trimmed))
-      } catch (e) {}
-    },
-
-    pushSys: function (t) {
-      this.messages.push({ from: 'sys', text: t })
-      this.saveHistory()
+        const d = new Date(ts)
+        const pad = n => (n < 10 ? '0'+n : ''+n)
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+      } catch (e) { return '' }
     }
   }
 }
 </script>
 
+
 <style scoped>
-/* 页面框架 */
-.chat-page {
+.chat-page{
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  background: #f7f8fa; /* 浅灰色背景 */
+  height: 100vh;        /* ★ 覆蓋整個視窗 */
+  overflow: hidden;     /* ★ 不讓外層滾動 */
 }
 
-
-/* 聊天区域：宽度随屏幕走，最多 1400px */
-.chat{
-  width: min(95vw, 1400px);   /* 关键：让宽度放大，几乎占满屏 */
-  margin: 32px auto;
-  padding: 0 20px;
-  box-sizing: border-box;
-}
-
-/* 顶部那行（Your ID / To / 输入对方ID） */
-/* 顶部行更整齐 */
-.row {
+/* 聊天外殼吃滿剩餘高度，不用知道 header 高度 */
+.chat-wrapper{
+  flex: 1;              /* ★ 吃滿 header 以外的高度 */
+  min-height: 0;        /* ★ 讓內層可以正確收縮 */
   display: flex;
-  align-items: center;
-  gap: 10px;               /* 控件间距 */
+  overflow: hidden;     /* 內部自己滾 */
 }
 
-/* 顶部输入框略微圆角 */
-.row .peer-input {
-  width: 320px;
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  border-radius: 8px;      /* 4个角圆弧 */
-  outline: none;
-  transition: border-color .2s, box-shadow .2s;
-}
-.row .peer-input:focus {
-  border-color: #3ab1ff;
-  box-shadow: 0 0 0 2px rgba(58,177,255,.2);
+/* 右側主區：垂直佈局 */
+.main{
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-/* 顶部 Send 按钮（圆角 + 浅蓝） */
-.top-send-btn {
-  border: none;
-  border-radius: 20px;     /* 圆弧 */
-  padding: 6px 14px;
-  background: #36a1ff;     /* 浅蓝 */
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-  line-height: 1;
-  box-shadow: 0 1px 3px rgba(0,0,0,.08);
-  transition: background .2s, transform .05s;
-}
-.top-send-btn:hover { background: #2b8fe6; }
-.top-send-btn:active { transform: translateY(1px); }
-
-.row input {
-  font-size: 14px;
-  color: #333;
-  width: 320px;
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  border-radius: 8px;    /* 四个角圆弧 */
-  outline: none;
-  font-size: 14px;
-  transition: border-color .2s ease, box-shadow .2s ease;
-}
-
-.row input:focus {
-  border-color: #3ab1ff;
-  box-shadow: 0 0 0 2px rgba(58, 177, 255, 0.25);
-}
-
-
-/* 消息区域：占满容器的宽度与更大的高度 */
-.log {
-  width: 80%;             /* 占屏 80% */
-  max-width: 1000px;      /* 也可以 900 / 960，按你喜好 */
-  height: 420px;          /* 看着再短一点也行 400~480 */
-  overflow: auto;
-  border: 1px solid #eee;
-  border-radius: 10px;
-  padding: 16px;
-  margin: 12px auto 16px; /* ⬅ 居中关键：auto */
-  box-sizing: border-box;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-}
-
-
-/* 每列訊息用 flex 排版 */
-.msg { display: flex; margin: 6px 0; }
-
-/* 自己的訊息靠右 */
-.msg.me { justify-content: flex-end; }
-
-/* 對方的訊息靠左 */
-.msg.peer { justify-content: flex-start; }
-
-/* 系統訊息置中、去背景 */
-.msg.sys { justify-content: center; }
-.msg.sys .bubble { background: transparent; color: #999; font-size: 12px; }
-
-/* 氣泡外觀（你已有，這裡保留） */
-.bubble {
-  border-radius: 16px;
+.topbar{
+  display: flex;
+  gap: 20px;
   padding: 8px 12px;
-  max-width: 60%;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+}
+
+/* 只讓訊息列表滾動 */
+.log{
+  flex: 1;
+  overflow: auto;
+  padding: 16px 12px;
+  background: #fafafa;
+}
+
+/* 送出列黏在底部 */
+.composer{
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid #eee;
+  background: #fff;
+}
+
+/* 訊息氣泡：左右對齊 */
+.msg {
+  display: flex;
+  margin: 6px 0;
+}
+.msg.peer { justify-content: flex-start; }   /* 對方靠左 */
+.msg.me   { justify-content: flex-end;   }   /* 我方靠右 */
+.msg.sys  { justify-content: center;     }   /* 系統置中（可選） */
+
+.bubble {
+  max-width: 70%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  box-shadow: 0 0 1px rgba(0,0,0,.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   word-break: break-word;
 }
 
-.msg.me .bubble  { background: #d9f0ff; }
-.msg.peer .bubble{ background: #f1f1f1; }
+/* 顏色區分 */
+.msg.peer .bubble { background: #ffffff; color: #222; }
+.msg.me   .bubble { background: #cfe8ff; color: #111; }   /* 淺藍 */
+.msg.sys  .bubble { background: #eee;    color: #444; }
 
-/* 输入区与按钮：也占满容器宽度 */
-.composer {
-  width: 80%;
-  max-width: 1000px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+/* 時間字 */
+.ts { font-size: 12px; color: #999; }
 
-.composer input{
-  flex:1;
-  padding:10px 14px;
-  border:1px solid #ccc;
-  border-radius:8px;          /* 四角圆弧 */
-  outline:none;
-  font-size:14px;
-  transition: border-color .2s, box-shadow .2s;
-}
-.composer input:focus{
-  border-color:#3ab1ff;
-  box-shadow:0 0 0 2px rgba(58,177,255,.25);
-}
 
-/* Send 按钮（保持不变） */
-.composer button{
-  border:none;
-  background:#3ab1ff;
-  color:#fff;
-  border-radius:9999px;
-  padding:10px 18px;
-  font-weight:600;
-  cursor:pointer;
-  transition:filter .15s, transform .02s;
-}
-.composer button:hover{ filter:brightness(.95) }
-.composer button:active{ transform:translateY(1px) }
+/* 左側 */
+.sidebar { width: 220px; border-right: 1px solid #eaeaea; background:#fff; display:flex; flex-direction:column; }
+.sidebar-header { padding: 10px 12px; font-weight: 600; border-bottom: 1px solid #eee; }
+.sidebar-empty { padding: 12px; color:#999; }
+.conv-list { list-style: none; padding: 6px; margin: 0; }
+.conv-list li { margin: 4px 0; }
+.conv-list li a { display:block; padding:8px 10px; border-radius: 8px; text-decoration:none; color:#333; }
+.conv-list li.active a { background:#e6f2ff; font-weight: 600; }
 
+/* 右側 */
+.main { flex: 1; display:flex; flex-direction:column; }
+.topbar { display:flex; gap:20px; padding:8px 12px; border-bottom:1px solid #eee; background:#fff; }
+.log { flex:1; overflow:auto; padding:12px; background:#fafafa; }
+.msg { margin:6px 0; }
+.msg.sys .bubble { background:#eee; color:#333; }
+.msg.me .bubble { background:#cfe8ff; align-self:flex-end; }
+.msg.peer .bubble { background:#fff; }
+.bubble { display:inline-flex; flex-direction:column; gap:4px; padding:6px 10px; border-radius:8px; box-shadow:0 0 1px rgba(0,0,0,.1); }
+.bubble .ts { font-size: 12px; color:#999; }
+.composer { display:flex; gap:8px; padding:10px; border-top:1px solid #eee; background:#fff; }
+.composer input { flex:1; padding:8px; }
 </style>

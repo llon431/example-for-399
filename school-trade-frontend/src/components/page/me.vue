@@ -471,8 +471,11 @@ export default {
       // 跳轉到私聊頁
       try {
         this.$router.push({
-          name: 'privateChat',
-          query: { targetId: String(targetId), selfId: String(selfId) }
+          name: 'PrivateChat',
+          query: { selfId: String(selfId), peerId: String(targetId) }  // ★ 關鍵
+        }).catch(err => {
+          // 忽略重複導航；其它錯誤印出來
+          if (err && err.name !== 'NavigationDuplicated') console.error(err);
         });
       } catch (e) {
         this.$router.push({
