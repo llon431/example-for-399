@@ -159,9 +159,9 @@ export default {
         { key: 'other',   label: 'Other',      value: '6', img: IOther}
       ],
       banners: [
-        { img: require('@/assets/login-back.png'), title: '活动1', link: '/activity/1' },
-        { img: require('@/assets/login-back.png'), title: '活动2', link: '/activity/2' },
-        { img: require('@/assets/login-back.png'), title: '活动3', link: '/activity/3' }
+        { img: require('@/assets/Specialoffer.png'), link: '/activity/1' },
+        { img: require('@/assets/summersale.jpg'), link: '/activity/2' },
+        { img: require('@/assets/Backtoschool.jpg'), link: '/activity/3' }
       ]
     }
   },
