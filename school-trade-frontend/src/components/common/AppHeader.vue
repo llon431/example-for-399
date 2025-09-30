@@ -56,7 +56,7 @@
           <span class="nav-text">Home</span>
         </router-link>
 
-        <router-link to="/messages" exact class="nav-item" @click.native="drawer = false">
+        <div class="nav-item" @click="user ? goMessages() : goToLogin(); drawer=false">
           <div class="nav-icon">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
@@ -66,7 +66,7 @@
             <span class="nav-text">My Messages</span>
             <span class="message-badge" v-if="unreadCount > 0">{{ unreadCount }}</span>
           </div>
-        </router-link>
+        </div>
 
         <!-- 校园 Map 按钮 -->
         <a
@@ -229,6 +229,24 @@ export default {
       this.loggingOut = false;
       window.location.reload();
     },
+
+    goMessages () {
+      this.drawer = false  // 關閉側拉框
+      const u = this.$globalData && this.$globalData.userInfo
+      const uid = u && (u.id || u.userId || u.uid)
+      if (!uid) {
+        this.$message && this.$message.error
+            ? this.$message.error('請先登入')
+            : alert('請先登入')
+        return
+      }
+      // ★ 跳到 PrivateChat，只帶 selfId
+      this.$router.push({
+        name: 'PrivateChat',
+        query: { selfId: String(uid) }
+      })
+    },
+
     goToLogin() {
       this.$router.push({ path: '/login', query: { redirect: this.$route.fullPath } })
     },

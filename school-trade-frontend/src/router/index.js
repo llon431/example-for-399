@@ -86,7 +86,7 @@ export default new Router({
         },
         {
             path: '/privateChat',
-            name: 'privateChat',
+            name: 'PrivateChat',
             component: () => import('../components/page/privateChat.vue'),
             meta: { title: 'Bag2Bag | Private Chat' }
         },
