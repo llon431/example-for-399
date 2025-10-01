@@ -225,4 +225,10 @@
         idle_new = #{idleNew}
     where id = #{id}
   </update>
+
+  <update id="updateIdleStatusToOffShelf">
+    UPDATE sh_idle_item
+    SET idle_status = 2
+    WHERE id = #{id}
+  </update>
 </mapper>

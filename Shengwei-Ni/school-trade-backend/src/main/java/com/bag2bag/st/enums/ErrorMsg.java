@@ -32,8 +32,10 @@ public enum ErrorMsg {
     FORM_NUMBER_ERROR("Invalid form ID."),
     REPEAT_COMMIT_ERROR("Please do not submit repeatedly."),
     COMMIT_FAIL_ERROR("Submission failed."),
-    FAVORITE_EXIT("Favorite already exists.");
-
+    FAVORITE_EXIT("Favorite already exists."),
+    RESPOND_CONFLICT_OR_NO_PERMISSION("RESPOND_CONFLICT_OR_NO_PERMISSION"),
+    CONFIRM_CONFLICT_OR_NO_PERMISSION("CONFIRM_CONFLICT_OR_NO_PERMISSION"),
+    CREATE_TRADE_FAIL("CREATE_TRADE_FAIL");
     private String msg;
 
     ErrorMsg(String msg) {

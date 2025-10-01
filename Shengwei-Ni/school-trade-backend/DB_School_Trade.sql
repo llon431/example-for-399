@@ -22,6 +22,7 @@ DROP TABLE IF EXISTS sh_order;
 DROP TABLE IF EXISTS sh_idle_item;
 DROP TABLE IF EXISTS sh_user;
 DROP TABLE IF EXISTS sh_admin;
+DROP TABLE IF EXISTS sh_trade;
 
 DROP TABLE IF EXISTS idle_item_sub_label;
 DROP TABLE IF EXISTS idle_item_label;
@@ -217,6 +218,44 @@ CREATE TABLE sh_order (
                           CONSTRAINT fk_order_idle FOREIGN KEY (idle_id) REFERENCES sh_idle_item(id)
                               ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 交易主表（最小可行）
+CREATE TABLE sh_trade (
+                                        id            BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                                        item_id       BIGINT       NOT NULL,                 -- 對應 sh_idle_item.id
+                                        buyer_id      BIGINT       NOT NULL,                 -- 發起方（買家）
+                                        seller_id     BIGINT       NOT NULL,                 -- 買賣雙方不可相同
+                                        meet_time     DATETIME     NOT NULL,                 -- 見面時間
+                                        meet_place    VARCHAR(255) NOT NULL,                 -- 見面地點
+    price_cents   INT          NOT NULL,                 -- 金額（分）避免小數誤差
+
+-- 狀態機：0=PROPOSED(提案)，1=AGREED(同意)，2=PENDING_BOTH_CONFIRM(等待雙方確認)，
+--         3=COMPLETED(完成)，4=DECLINED(拒絕)，5=CANCELLED(取消)，6=EXPIRED(超時)
+    status        TINYINT      NOT NULL,
+
+    buyer_ok      TINYINT      NOT NULL DEFAULT 0,       -- 完成卡：買家是否已確認
+    seller_ok     TINYINT      NOT NULL DEFAULT 0,       -- 完成卡：賣家是否已確認
+    locked        TINYINT      NOT NULL DEFAULT 0,       -- 提案被賣家接受後鎖定（前端卡片置灰）
+    version       INT          NOT NULL DEFAULT 0,       -- 樂觀鎖，用於避免重複點擊/競態
+
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    KEY idx_trade_item   (item_id),
+    KEY idx_trade_buyer  (buyer_id),
+    KEY idx_trade_seller (seller_id),
+    KEY idx_trade_status (status),
+
+    CONSTRAINT fk_trade_item   FOREIGN KEY (item_id)   REFERENCES sh_idle_item(id)
+                                                                  ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_trade_buyer  FOREIGN KEY (buyer_id)  REFERENCES sh_user(id)
+                                                                  ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_trade_seller FOREIGN KEY (seller_id) REFERENCES sh_user(id)
+                                                                  ON UPDATE CASCADE ON DELETE RESTRICT
+    );
+
+
+
 
 /* =============================
    Seed data

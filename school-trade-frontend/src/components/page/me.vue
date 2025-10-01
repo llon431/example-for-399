@@ -398,7 +398,6 @@ export default {
       await this.loadOtherProfile(routeId);     // 只把畫面用的 userInfo 換成對方
       await this.getSellItems();                // 用 targetUserId 拉對方清單
       await this.getExchangeItems();
-      // ❌ 不要呼叫 getMyFavorite()/我的訂單 等自用 API
     } else {
       // --- 自己模式 ---
       console.log('[me.vue] 自己模式，呼叫 loadSelfProfile');

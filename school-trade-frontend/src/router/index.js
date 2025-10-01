@@ -91,6 +91,11 @@ export default new Router({
             meta: { title: 'Bag2Bag | Private Chat' }
         },
         {
+            path: '/trade-tester',
+            name: 'TradeTester',
+            component: () => import('../components/page/tradetester.vue')
+        },
+        {
             path: '*',
             redirect: '/'
         }

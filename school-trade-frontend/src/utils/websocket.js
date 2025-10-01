@@ -15,12 +15,17 @@ export function connectWebSocket(userId, onMessage) {
     try { socket && socket.close(); } catch (_) {}
     socket = new WebSocket(url);
 
-    socket.onopen = () => { /* 不送 hello/ping，照你的 server.js 協議 */ };
+    socket.onopen = () => {};
 
     socket.onmessage = (evt) => {
         let data = evt && evt.data ? evt.data : evt;
         try { data = JSON.parse(data); } catch (_) {}
-        if (typeof onMessage === 'function') onMessage(data);
+
+        const type = data && data.type ? String(data.type) : 'chat';
+        const event = { ...data, type };
+        if (typeof onMessage === 'function') {
+            onMessage(event);  // ★ 不論 chat 或 TRADE_CARD 都發佈
+        }
     };
 
     socket.onclose = () => {};
@@ -35,3 +40,10 @@ export function sendChat(to, text) {
     socket.send(JSON.stringify({ type: 'chat', to: String(to), text: String(text || '') }));
 }
 
+export function sendPayload(obj) {
+    if (!obj) { console.warn('[WS] sendPayload: empty payload'); return false }
+    if (!socket) { console.warn('[WS] not connected'); return false }
+    if (socket.readyState !== WebSocket.OPEN) { console.warn('[WS] not open:', socket.readyState); return false }
+    socket.send(JSON.stringify(obj))
+    return true
+}

@@ -41,4 +41,6 @@ public interface IdleItemMapper {
     int updateByPrimaryKey(IdleItem record);
 
     List<IdleItem> findIdleByList(List<Long> idList);
+
+    int updateIdleStatusToOffShelf(@Param("id") Long id);
 }

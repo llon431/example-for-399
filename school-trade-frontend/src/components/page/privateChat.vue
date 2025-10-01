@@ -4,8 +4,8 @@
     <div class="chat-wrapper">
       <!-- 左側：會話列表 -->
       <aside class="sidebar">
-        <div class="sidebar-header">會話列表</div>
-        <div v-if="!conversations.length" class="sidebar-empty">目前尚無會話</div>
+        <div class="sidebar-header">Contact list</div>
+        <div v-if="!conversations.length" class="sidebar-empty">SORRY to say but you have No friends</div>
         <ul v-else class="conv-list">
           <li
               v-for="row in conversations"
@@ -27,14 +27,37 @@
       <!-- 右側：聊天區 -->
       <section class="main">
         <div class="topbar">
-          <div>自己ID：<strong>{{ selfId }}</strong></div>
-          <div>對方ID：<strong>{{ peerId }}</strong></div>
+          <div>YOUR ID：<strong>{{ selfId }}</strong></div>
+          <div>Friends ID：<strong>{{ peerId }}</strong></div>
         </div>
 
         <div ref="log" class="log">
           <div v-for="(m,i) in messages" :key="i" class="msg" :class="m.from">
             <div class="bubble">
-              <div class="text">{{ m.text }}</div>
+              <!-- 交易小卡 -->
+              <template v-if="m.kind === 'card' && m.card">
+                <div class="tc-title">TRADE</div>
+                <div class="tc-row"><b>ITEM ID</b>：#{{ m.card.itemId }}</div>
+                <div class="tc-row"><b>Time to meet</b>：{{ formatTs(m.card.content && m.card.content.meetTime) }}</div>
+                <div class="tc-row"><b>Place to meet</b>：{{ m.card.content && m.card.content.meetPlace }}</div>
+                <div class="tc-row"><b>PRICE</b>：${{ ((m.card.content && m.card.content.priceCents) || 0) / 100 }}</div>
+                <div class="tc-actions">
+                  <el-button size="mini" type="primary" @click="accept(m.card)">agree</el-button>
+                  <el-button size="mini" @click="reject(m.card)">NO!!!!!</el-button>
+                </div>
+              </template>
+
+              <!-- 文字：kind==='text' 或 無 kind 但有 text -->
+              <template v-else-if="m.kind === 'text' || (!m.kind && m.text)">
+                <div class="text">{{ m.text }}</div>
+              </template>
+
+              <!-- 其他（保底） -->
+              <template v-else>
+                <div class="text">[unknow message]</div>
+              </template>
+
+              <!-- 時間：放分支外 -->
               <div class="ts">{{ formatTs(m.ts) }}</div>
             </div>
           </div>
@@ -44,7 +67,7 @@
           <input
               v-model="input"
               @keyup.enter="send"
-              placeholder="輸入訊息 Enter 送出"
+              placeholder="Enter your message"
           />
           <button @click="send">send</button>
         </div>
@@ -133,16 +156,36 @@ export default {
 
     // ===== 全局事件回調 =====
     onBusEvent (e) {
-      if (!e || e.type !== 'chat') return
-      // 刷新左側列表（recordIncoming 已把索引/未讀寫好）
-      this.loadConversations()
+      if (!e || (e.type !== 'chat' && e.type !== 'TRADE_CARD')) return
 
-      // 若訊息來自當前 peer，右側也同步顯示並清未讀
-      if (String(e.from) === String(this.peerId)) {
-        this.chat.addMessage({ from: 'peer', text: e.text || '', ts: e.ts })
-        resetUnread(this.selfId, this.peerId)
-        this.$nextTick(this.scrollToBottom)
+      // 只處理與當前會話相關的
+      const involve = String(e.from) === String(this.peerId) || String(e.to) === String(this.peerId)
+      if (!involve) {
+        this.loadConversations()
+        return
       }
+
+      const mine = String(e.from) === String(this.selfId)
+
+      if (e.type === 'chat') {
+        this.chat.addMessage({
+          from: mine ? 'me' : 'peer',
+          kind: 'text',
+          text: e.text || '',
+          ts: e.ts || Date.now()
+        })
+      } else if (e.type === 'TRADE_CARD') {
+        this.chat.addMessage({
+          from: mine ? 'me' : 'peer',
+          kind: 'card',
+          card: e,                     // ★ 整個 payload
+          ts: e.ts || Date.now()
+        })
+      }
+
+      this.loadConversations()
+      if (!mine) resetUnread(this.selfId, this.peerId)
+      this.$nextTick(this.scrollToBottom)
     },
 
     // ===== 發送 =====
