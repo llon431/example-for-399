@@ -4,9 +4,6 @@
       <!-- Left: brand -->
       <router-link class="brand" to="/">BAG2BAG</router-link>
 
-      <!-- Center: simple bag mark -->
-      <img class="brand-mark" :src="logo" alt="BAG2BAG logo" />
-
       <!-- Right: actions -->
       <div class="actions">
         <!-- Post Item 按钮移到这里 -->
@@ -15,6 +12,13 @@
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
           </svg>
           Post Item
+        </router-link>
+
+        <router-link to="/index" class="post-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+          </svg>
+          Home
         </router-link>
 
         <el-button class="menu-btn" icon="el-icon-menu" circle @click="drawer = true" />
@@ -63,6 +67,23 @@
             <span class="message-badge" v-if="unreadCount > 0">{{ unreadCount }}</span>
           </div>
         </div>
+
+        <!-- 校园 Map 按钮 -->
+        <a
+            href="https://maps.auckland.ac.nz/auckland/fa64ffa351cb4fe680fa2929/search"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="nav-item"
+            @click="drawer = false"
+        >
+          <div class="nav-icon">
+            <!-- 一个地图图标，可以用 SVG 或者换成别的 -->
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 3.25 2.66 6.93 7.27 11.65.4.42 1.06.42 1.46 0C16.34 15.93 19 12.25 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/>
+            </svg>
+          </div>
+          <span class="nav-text">Campus Map</span>
+        </a>
 
         <router-link to="/about" exact class="nav-item" @click.native="drawer = false">
           <div class="nav-icon">
@@ -256,12 +277,13 @@ export default {
 
 .bar {
   height: 88px;
-  max-width: 1080px;
+  width: 90%;          /* 占满整个宽度 */
+  max-width: none;      /* 取消宽度限制 */
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;                 /* 改成 flex 布局 */
+  justify-content: space-between;/* 左右分布 */
   align-items: center;
-  padding: 0 16px;
+  padding: 0 10px;
 }
 
 .brand {
@@ -293,21 +315,21 @@ export default {
 .post-btn {
   color: #fff;
   text-decoration: none;
-  padding: 8px 16px;
+  padding: 12px 24px;
   border-radius: 10px;
   border: rgba(59, 167, 255, 0.1);
   background: #0c1240;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
   transition: all 0.3s ease;
 }
 
 .post-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
 }
 
 .post-btn:hover {

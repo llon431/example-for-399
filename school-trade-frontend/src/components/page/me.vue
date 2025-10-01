@@ -859,7 +859,13 @@ export default {
 /* User Profile Section Styles - Transparent glassmorphism design */
 .user-profile-section {
   padding: 0;
-  background: #1e7c8e;
+  background: linear-gradient(
+
+      #0c1240 0%,
+      #0c1240 60%,
+      #14b8a6 100%
+
+  );
   margin-bottom: 30px;
   min-height: 400px;
   position: relative;
@@ -1028,7 +1034,7 @@ export default {
 }
 
 .rating-stars {
-  color: #ffd700;
+  color: #ffd217;
   font-size: 16px;
   display: flex;
   gap: 2px;
@@ -1070,7 +1076,7 @@ export default {
 }
 
 .detail-icon {
-  color: #ffd700;
+  color: #ffd217;
   font-size: 20px;
   flex-shrink: 0;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));

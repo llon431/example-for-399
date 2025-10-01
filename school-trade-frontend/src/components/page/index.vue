@@ -1,21 +1,54 @@
 <template>
   <div class="index-page">
     <app-head />
+    <div class="index-wrap">
+      <!-- Hero，仅在未登录显示 -->
+      <section class="hero" v-if="!isAuthed()">
+        <div class="hero-text">
+          <span class="hero-badge">Welcome to Bag2Bag</span>
+          <h1>Buy, Sell & <span>Exchange</span> with Ease</h1>
+          <p>
+            Share what you have, find what you need<br />
+            Connect with people near you
+          </p>
+          <div class="hero-buttons">
+            <button class="btn-primary" @click="$router.push('/release')">Start Selling</button>
+            <button class="btn-secondary" @click="$router.push('/about')">Learn More</button>
+          </div>
+        </div>
 
-    <app-body>
-      <div class="index-wrap">
-        <!-- Search bar -->
-        <section class="search-row">
-          <div class="searchbar">
-            <input
-                v-model.trim="keyword"
-                placeholder="Search  Computer Sci"
-                @keyup.enter="onSearch"
-            />
-            <button class="searchbtn" @click="onSearch" aria-label="search">🔍</button>
+        <div class="hero-image">
+          <img src="@/assets/AmigosShapes.png" alt="hero-img" />
+        </div>
+      </section>
+
+      <!-- Search bar -->
+      <section class="search-row">
+        <div class="searchbar">
+          <input
+              v-model.trim="keyword"
+              placeholder="Search  Computer Sci"
+              @keyup.enter="onSearch"
+          />
+          <button class="searchbtn" @click="onSearch" aria-label="search">🔍</button>
+        </div>
+      </section>
+
+      <div class="content-container">
+        <!-- 活动横幅卡片 -->
+        <section class="activity-banner container">
+          <div class="banner-grid">
+            <div
+                v-for="(banner, idx) in banners"
+                :key="idx"
+                class="banner-card"
+                @click="goBanner(banner)"
+            >
+              <img :src="banner.img" :alt="banner.title" />
+              <div class="banner-title">{{ banner.title }}</div>
+            </div>
           </div>
         </section>
-
         <!-- Category tiles -->
         <section class="cats">
           <button
@@ -31,9 +64,22 @@
           </button>
         </section>
 
-        <!-- You May Like -->
-        <h3 class="section-title">You May Like</h3>
+        <!-- Section header + Sort -->
+        <div class="section-header">
+          <h3 class="section-title">You May Like</h3>
+          <div class="sort-row">
+            <label for="sort">Sort by:</label>
+            <select id="sort" v-model="sortKey" @change="handleSortChange">
+              <option value="default">Default</option>
+              <option value="priceAsc">Price ↑</option>
+              <option value="priceDesc">Price ↓</option>
+              <option value="timeDesc">Newest</option>
+              <option value="timeAsc">Oldest</option>
+            </select>
+          </div>
+        </div>
 
+        <!-- Recommended cards -->
         <section class="cards">
           <article
               v-for="(idle, index) in idleList"
@@ -47,7 +93,6 @@
               </template>
             </el-image>
 
-            <!-- 心形按钮：放在图片后、z-index 更高 -->
             <button
                 class="heart"
                 :class="{ 'is-liked': isLiked(idle) }"
@@ -67,7 +112,7 @@
         <div class="pager">
           <el-pagination
               background
-              :page-size="8"
+              :page-size="40"
               layout="prev, pager, next, jumper"
               :current-page.sync="currentPage"
               :total="totalItem"
@@ -76,9 +121,8 @@
           />
         </div>
       </div>
-
-      <app-foot />
-    </app-body>
+    </div>
+    <app-foot />
   </div>
 </template>
 
@@ -95,17 +139,17 @@ import IOther   from '../../assets/application.png'
 
 export default {
   name: 'index',
-  components: { AppHead, AppBody, AppFoot },
+  components: { AppHead, AppFoot },
   data () {
     return {
-      labelName: '0',         // 類別（0=全部）
+      sortKey: 'default',
+      labelName: '0',
       idleList: [],
       currentPage: 1,
       totalItem: 0,
       keyword: '',
       likedMap: {},
       favIdByIdle: {},
-      // 依你的實際路徑/代碼調整 value
       cats: [
         { key: 'univ',    label: 'University', value: '1', img: IUniv },
         { key: 'tech',    label: 'Tech',       value: '2', img: ITech },
@@ -113,6 +157,11 @@ export default {
         { key: 'sports',  label: 'Sports',     value: '4', img: ISports },
         { key: 'living',  label: 'Living',     value: '5', img: ILiving },
         { key: 'other',   label: 'Other',      value: '6', img: IOther}
+      ],
+      banners: [
+        { img: require('@/assets/Specialoffer.png'), link: '/activity/1' },
+        { img: require('@/assets/summersale.jpg'), link: '/activity/2' },
+        { img: require('@/assets/Backtoschool.jpg'), link: '/activity/3' }
       ]
     }
   },
@@ -127,7 +176,6 @@ export default {
     }
   },
   async mounted() {
-    // 进页面先拉我的喜欢列表，构建 likedMap
     await this.initFavorites();
   },
   methods: {
@@ -143,56 +191,97 @@ export default {
       const n = Number(p || 0)
       return n.toFixed(2)
     },
+    goBanner(banner) {
+      if (banner.link) this.$router.push(banner.link)
+    },
+    isAuthed() {
+      try {
+        const raw = localStorage.getItem('user');
+        if (!raw) return false;
+        const obj = JSON.parse(raw);
+        return !!obj;
+      } catch (e) {
+        return false;
+      }
+    },
 
     // ===== 資料讀取，沿用你原本的 API 命名 =====
     syncFromRoute () {
+      this.currentPage = Number(this.$route.query.page || 1);
+      this.labelName = (this.$route.query.labelName !== undefined) ? String(this.$route.query.labelName) : '0';
+      this.sortKey = this.$route.query.sort || 'default';
       this.currentPage = Number(this.$route.query.page || 1)
       this.labelName = (this.$route.query.labelName !== undefined)
           ? String(this.$route.query.labelName)
           : '0'
     },
-    findIdleTiem (page) {
+    findIdleTiem(page) {
       const loading = this.$loading({
         lock: true, text: 'Loading', spinner: 'el-icon-loading', background: 'rgba(0,0,0,0)'
-      })
+      });
 
-      const labelNum = Number(this.labelName || 0)
-      const isAll = !(isFinite(labelNum) && labelNum > 0)
-      const api = isAll ? this.$api.findIdleTiem : this.$api.findIdleTiemByLable
-      const params = isAll ? { page, nums: 8 } : { idleLabel: labelNum, page, nums: 8 }
+      const labelNum = Number(this.labelName || 0);
+      const isAll = !(isFinite(labelNum) && labelNum > 0);
+      const api = isAll ? this.$api.findIdleTiem : this.$api.findIdleTiemByLable;
+
+      const params = {
+        page,
+        nums: 40,
+        idleLabel: isAll ? undefined : labelNum,
+        sort: this.sortKey // 传给后端（后端若不支持则前端会再排序）
+      };
 
       api(params).then(res => {
-        const data = (res && res.data) ? res.data : res
-        const list = (data && Array.isArray(data.list)) ? data.list : []
+        const data = (res && res.data) ? res.data : res;
+        // 兼容后端不同字段命名
+        const rawList = (data && Array.isArray(data.list)) ? data.list
+            : (data && Array.isArray(data.data)) ? data.data
+                : (Array.isArray(data) ? data : []);
+        const list = rawList || [];
+
         this.idleList = list.map(it => {
-          let pictures = []
-          try { pictures = JSON.parse(it.pictureList || '[]') } catch (e) {}
-          const timeStr = it.releaseTime
-              ? (it.releaseTime.substring(0, 10) + ' ' + it.releaseTime.substring(11, 19))
-              : ''
+          let pictures = [];
+          try { pictures = JSON.parse(it.pictureList || '[]') } catch(e){}
+          const timeStr = it.releaseTime ? (it.releaseTime.substring(0,10) + ' ' + it.releaseTime.substring(11,19)) : '';
           return {
             ...it,
             timeStr,
             imgUrl: pictures[0] || '',
             user: it.user || {}
           }
-        })
-        this.totalItem = Number((data && data.count) || 0)
+        });
+
+        this.totalItem = Number((data && data.count) || 0);
+
+        // 如果后端没有做排序，前端再根据 sortKey 做一次本地排序（作为后备）
+        if (this.sortKey && this.sortKey !== 'default') {
+          this.applySort();
+        }
       }).catch(e => {
-        console.log(e)
-        this.idleList = []
-        this.totalItem = 0
-      }).finally(() => loading.close())
+        console.error(e);
+        this.idleList = [];
+        this.totalItem = 0;
+      }).finally(() => loading.close());
     },
+    handleSortChange() {
+      // 排序改变，回到第一页
+      this.currentPage = 1;
+      this.$router.replace({ query: { page: 1, labelName: this.labelName, sort: this.sortKey } });
+      this.findIdleTiem(this.currentPage);
+    },
+
     handleClick () {
       const q = { page: 1 }
       if (Number(this.labelName) > 0) q.labelName = this.labelName
       this.$router.replace({ query: q })
     },
     handleCurrentChange (val) {
-      const q = { page: val }
-      if (Number(this.labelName) > 0) q.labelName = this.labelName
-      this.$router.replace({ query: q })
+      this.currentPage = val;
+      const q = { page: val };
+      if (Number(this.labelName) > 0) q.labelName = this.labelName;
+      if (this.sortKey && this.sortKey !== 'default') q.sort = this.sortKey;
+      this.$router.replace({ query: q });
+      this.findIdleTiem(val);
     },
     toDetails (idle) {
       this.$router.push({ path: '/details', query: { id: idle.id } })
@@ -201,18 +290,44 @@ export default {
     async initFavorites() {
       try {
         const res = await this.$api.getMyFavorite({});
-        var list;
-        if (res && res.data && res.data.data) list = res.data.data;
-        else if (res && res.data) list = res.data;
-        else list = res || [];
+        // 规范化到数组
+        let list = [];
 
-        var liked = {};
-        var mapFav = {};
-        list.forEach(function (it) {
-          // Favorite 記錄本身的主鍵
-          var favoriteId = it && it.id;
-          // 這條收藏對應的商品 id
-          var idleId = it ? (it.idleId != null ? it.idleId : it.id) : null;
+        // 常见后端返回结构兼容（优先级从具体到宽泛）
+        if (!res) {
+          list = [];
+        } else if (Array.isArray(res)) {
+          list = res;
+        } else if (Array.isArray(res.data)) {
+          list = res.data;
+        } else if (res.data && Array.isArray(res.data.data)) {
+          list = res.data.data;
+        } else if (res.data && Array.isArray(res.data.list)) {
+          list = res.data.list;
+        } else if (Array.isArray(res.data && res.data.items)) {
+          list = res.data.items;
+        } else {
+          // 最后防御：如果 res.data 是对象但其属性里面包含数组（尝试自动抽取）
+          if (res && typeof res === 'object' && !Array.isArray(res)) {
+            // no-op: 保持 list = []
+          }
+        }
+
+        // 如果需要调试实际返回结构，可以临时打开下面这行：
+        // console.debug('initFavorites response normalized list:', list, 'rawRes:', res);
+
+        const liked = {};
+        const mapFav = {};
+        (list || []).forEach(function (it) {
+          // 兼容不同命名：favorite record 的主键可能叫 id / favoriteId / favId
+          const favoriteId =
+              (it && typeof it.id !== 'undefined') ? it.id :
+                  (it && typeof it.favoriteId !== 'undefined') ? it.favoriteId :
+                      (it && typeof it.favId !== 'undefined') ? it.favId : null;
+
+          // 这条收藏对应的商品 id 可能叫 idleId 或 id
+          const idleId = it ? (it.idleId != null ? it.idleId : (it.itemId != null ? it.itemId : it.id)) : null;
+
           if (idleId != null) {
             liked[idleId] = true;
             if (favoriteId != null) mapFav[idleId] = favoriteId;
@@ -230,18 +345,6 @@ export default {
     isLiked(idle) {
       var id = (idle && (idle.id != null ? idle.id : idle.idleId));
       return !!(this.likedMap && this.likedMap[id]);
-    },
-
-    isAuthed() {
-      // 讀 localStorage['user']，解析是否存在
-      try {
-        var raw = localStorage.getItem('user');
-        if (!raw) return false;
-        var obj = JSON.parse(raw);
-        return !!obj;
-      } catch (e) {
-        return false;
-      }
     },
 
     _getCode(res) {
@@ -345,6 +448,51 @@ export default {
         this.$message && this.$message.error ? this.$message.error(msg || 'please try again later') : alert(msg || 'please try again later');
         console.error(e);
       }
+    },
+    // 排序
+    handleSort() {
+      if (!this.idleList || this.idleList.length === 0) return;
+
+      switch(this.sortKey) {
+        case 'priceAsc':
+          this.idleList.sort((a, b) => (Number(a.idlePrice) || 0) - (Number(b.idlePrice) || 0));
+          break;
+        case 'priceDesc':
+          this.idleList.sort((a, b) => (Number(b.idlePrice) || 0) - (Number(a.idlePrice) || 0));
+          break;
+        case 'timeAsc':
+          this.idleList.sort((a, b) => new Date(a.releaseTime) - new Date(b.releaseTime));
+          break;
+        case 'timeDesc':
+          this.idleList.sort((a, b) => new Date(b.releaseTime) - new Date(a.releaseTime));
+          break;
+        default:
+          // 默认顺序可以重新拉接口，也可以不变
+          this.findIdleTiem(this.currentPage);
+          break;
+      }
+    },
+    // 本地排序（作为后备），不会再次拉接口，避免递归
+    applySort() {
+      if (!this.idleList || !Array.isArray(this.idleList) || this.idleList.length === 0) return;
+
+      switch(this.sortKey) {
+        case 'priceAsc':
+          this.idleList.sort((a, b) => (Number(a.idlePrice) || 0) - (Number(b.idlePrice) || 0));
+          break;
+        case 'priceDesc':
+          this.idleList.sort((a, b) => (Number(b.idlePrice) || 0) - (Number(a.idlePrice) || 0));
+          break;
+        case 'timeAsc':
+          this.idleList.sort((a, b) => new Date(a.releaseTime) - new Date(b.releaseTime));
+          break;
+        case 'timeDesc':
+          this.idleList.sort((a, b) => new Date(b.releaseTime) - new Date(a.releaseTime));
+          break;
+        default:
+          // 不做任何操作
+          break;
+      }
     }
 
   }
@@ -353,23 +501,151 @@ export default {
 </script>
 
 <style scoped>
-:root { --nav: #0c1240; --accent: #0c1240; --line: #27a5ff; --muted: #e5e7eb; }
+:root {
+  --nav:#0c1240;
+  --accent: #0c1240;
+  --line: #27a5ff;
+  --muted: #e5e7eb;
+}
 
-.index-wrap { background: #fff; }
+/* Hero Section */
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 600px;
+  padding: 100px;
+  background: #f0f8ff; /* 浅蓝背景 */
+  overflow: hidden;
+  padding-top: 50px;
+}
+.hero-text { flex: 1; max-width: 50%; z-index: 2; }
+.hero-badge {
+  display: inline-block;
+  background: #dbeafe;
+  color: #2563eb;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 18px;
+  margin-bottom: 15px;
+}
+.hero-text h1 { font-size: 56px; margin-bottom: 20px; font-weight: bold; }
+.hero-text h1 span { color: #14b8a6; }
+.hero-text p { font-size: 20px; margin-bottom: 30px; line-height: 1.6; }
+.hero-buttons { display: flex; gap: 16px; }
+.btn-primary {
+  background: #0c1240;
+  color: white;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+}
+.btn-primary:hover { background: #14b8a6; }
+.btn-secondary {
+  background: transparent;
+  border: 2px solid #0c1240;
+  color: #0c1240;
+  padding: 14px 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+}
+.btn-secondary:hover { background: #e0f2fe; }
+
+/* Hero image */
+.hero-image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+.hero-image::before {
+  content: "";
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #e6f5ff 0%, #ffffff 80%);
+  z-index: 1;
+}
+.hero-image img { max-width: 100%; height: auto; position: relative; z-index: 2; }
+.decor { position: absolute; font-size: 28px; z-index: 3; }
+.decor-1 { top: 15%; left: 15%; }
+.decor-2 { bottom: 20%; right: 20%; }
+.decor-3 { top: 40%; right: 10%; }
+
+/* Responsive hero */
+@media (max-width: 768px) {
+  .hero { flex-direction: column; text-align: center; padding: 20px; min-height: 500px; }
+  .hero-text { max-width: 100%; margin-bottom: 20px; }
+}
 
 /* Search */
-.search-row { display: flex; justify-content: center; margin-top: 14px; }
+.search-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 0px;
+  padding-top: 20px;
+}
 .searchbar {
-  display: flex; width: min(640px, 92%);
-  background: #fff; border: 1px solid #d9dee7; border-radius: 9999px;
+  display: flex; width: min(1000px, 92%);
+  background: #e6f5ff; border: 1px solid #d9dee7; border-radius: 9999px;
   box-shadow: 0 2px 8px rgba(0,0,0,.06); overflow: hidden;
 }
-.searchbar input { flex: 1; padding: 12px 16px; border: 0; outline: none; font-size: 14px; }
+.searchbar input { flex: 1; padding: 20px 16px; border: 0; outline: none; font-size: 20px; }
 .searchbtn { width: 56px; border: 0; background: #fff; cursor: pointer; font-size: 18px; }
-.searchbtn:hover { background: #f3f4f6; }
+.searchbtn:hover { background: #e6f5ff; }
 
-/* Categories */
-.cats { display: grid; grid-template-columns: repeat(6, minmax(100px, 1fr)); gap: 16px; padding: 24px 32px; }
+/* 全局内容容器 */
+.content-container {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 0 150px;
+}
+
+/* 活动横幅 */
+.activity-banner {
+  margin: 32px 0 24px;
+}
+.banner-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.banner-card {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform .2s ease;
+}
+.banner-card:hover { transform: scale(1.02); }
+.banner-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+.banner-title {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* 分类 */
+.cats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(100px, 1fr));
+  gap: 16px;
+  padding: 24px 0;
+}
 .cat {
   background: var(--nav); color: #fff; border-radius: 16px; height: 92px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -381,33 +657,35 @@ export default {
 .cat-text { font-size: 14px; }
 
 /* Section title */
-.section-title { font-weight: 700; margin: 8px 32px 10px; }
-
-/* Cards */
-.cards { display: grid; grid-template-columns: repeat(3, minmax(200px, 1fr)); gap: 24px; padding: 8px 32px 24px; }
-.card { position: relative; background: #fff; border-radius: 14px; border: 6px solid #d6dee5; padding: 10px; height: 220px; cursor: pointer; }
-.cover { width: 100%; height: 120px; border-radius: 8px; background: #f9fafb; }
-.heart { position: absolute; top: 10px; right: 12px; background: #fff; border: 0; font-size: 18px; cursor: pointer; }
-.price { position: absolute; left: 18px; top: 134px; background: #eef0f3; border-radius: 9999px; padding: 4px 10px; font-size: 12px; color: #111827; }
-.name { position: absolute; left: 12px; right: 12px; bottom: 12px; background: var(--nav); color: #fff; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* Pagination */
-.pager { display: flex; justify-content: center; padding: 8px 0 32px; }
-
-/* Responsive */
-@media (max-width: 1024px) {
-  .cats { grid-template-columns: repeat(3, 1fr); }
-  .cards { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 640px) {
-  .cats { grid-template-columns: repeat(2, 1fr); }
-  .cards { grid-template-columns: 1fr; }
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 左右分布 */
+  margin: 16px 0; /* 上下间距 */
 }
 
+.section-title {
+  font-weight: 700;
+  font-size: 20px;
+}
+
+/* 商品卡片 */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  padding: 8px 0 24px;
+}
 .card {
   position: relative;
+  background: #fff;
+  border-radius: 14px;
+  border: 6px solid #d6dee5;
+  padding: 10px;
+  height: 220px;
+  cursor: pointer;
 }
-
+.cover { width: 100%; height: 120px; border-radius: 8px; background: #f9fafb; }
 .heart {
   position: absolute;
   top: 8px;
@@ -423,8 +701,52 @@ export default {
   transition: transform .12s ease;
 }
 .heart:hover { transform: scale(1.06); }
-.heart.is-liked {
-  color: #e0245e;     /* 高亮颜色 */
-  background: #fff;   /* 你也可以改成半透明 */
+.heart.is-liked { color: #e0245e; background: #fff; }
+.price {
+  position: absolute;
+  left: 18px;
+  top: 134px;
+  background: #eef0f3;
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #111827;
+}
+.name {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  background: var(--nav);
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 分页 */
+.pager { display: flex; justify-content: center; padding: 8px 0 32px; }
+
+/* 排序行 */
+.sort-row { display: flex; align-items: center; gap: 8px; }
+.sort-row select {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #d6dee5;
+}
+
+/* 响应式 */
+@media (max-width: 1024px) {
+  .cats { grid-template-columns: repeat(3, 1fr); }
+  .cards { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .cats { grid-template-columns: repeat(2, 1fr); }
+  .cards { grid-template-columns: 1fr; }
 }
 </style>
+

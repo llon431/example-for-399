@@ -2,8 +2,11 @@ import Vue from 'vue';
 import App from './App.vue';
 import router from './router';
 import ElementUI from 'element-ui';
-import $ from 'jquery'
+import enLocale from 'element-ui/lib/locale/lang/en'; // 引入英文语言包
+import locale from 'element-ui/lib/locale';           // 引入 locale
+import $ from 'jquery';
 import 'element-ui/lib/theme-chalk/index.css';
+
 import 'babel-polyfill';
 import { ensureGlobalChat } from '@/utils/chatBus'
 import api from './api/index.js';
@@ -80,6 +83,11 @@ router.beforeEach((to, from, next) => {
         next();
     }
 });
+
+locale.use(enLocale);
+Vue.use(ElementUI);
+
+Vue.config.productionTip = false;
 
 new Vue({
     router,
